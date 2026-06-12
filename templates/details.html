@@ -51,6 +51,9 @@
         <th>Ячейка</th>
         <th class="text-end">Остаток</th>
         <th>Статус</th>
+        {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
+        <th></th>
+        {% endif %}
         {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
         <th></th>
         {% endif %}
@@ -80,6 +83,17 @@
             <span class="det-status-badge det-status-green">Норма</span>
           {% endif %}
         </td>
+        {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
+        <td>
+          {% if p.status in ('red', 'yellow') %}
+          <a href="{{ url_for('prikhod') }}?part_id={{ p.id }}"
+             class="btn det-replenish-btn"
+             title="Оформить приход для этой детали">
+            <i class="bi bi-box-arrow-in-down"></i> Пополнить
+          </a>
+          {% endif %}
+        </td>
+        {% endif %}
         {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
         <td>
           <button type="button" class="btn det-edit-btn"

@@ -42,7 +42,7 @@
                   data-article="{{ p.article }}"
                   data-cell-id="{{ p.cell_id }}"
                   data-cell-code="{{ p.cell_code }}"
-                  {{ 'selected' if form and form.part_id == p.id|string else '' }}>
+                  {{ 'selected' if (form and form.part_id == p.id|string) or (not form.part_id and selected_part_id == p.id|string) else '' }}>
             {{ p.article }} — {{ p.name }} ({{ p.quantity }} {{ p.unit }}, {{ p.cell_code }})
           </option>
           {% endfor %}
@@ -82,12 +82,10 @@
           </div>
 
           <div class="col-sm-4">
-            <label class="form-label">Исполнитель <span class="req">*</span></label>
-            <input type="text" name="operator" id="operator"
-                   class="form-control fc-dark"
-                   placeholder="ФИО или табельный №"
-                   value="{{ form.operator if form else default_operator }}"
-                   required>
+            <label class="form-label">Исполнитель</label>
+            <div class="form-control-readonly">
+              <i class="bi bi-person-fill me-1 text-muted"></i>{{ current_operator }}
+            </div>
           </div>
 
           <div class="col-12">
@@ -166,7 +164,6 @@
   const partSearch    = document.getElementById('part-search');
   const qtyInput      = document.getElementById('quantity');
   const cellSelect    = document.getElementById('cell_id');
-  const operatorInput = document.getElementById('operator');
   const submitBtn     = document.getElementById('submit-btn');
 
   // ── Фильтрация списка деталей ───────────────────────────────
@@ -204,10 +201,8 @@
   });
 
   // ── Обновление панели ───────────────────────────────────────
-  [qtyInput, cellSelect, operatorInput]
-    .forEach(el => el.addEventListener('change', refresh));
-  [qtyInput, operatorInput]
-    .forEach(el => el.addEventListener('input', refresh));
+  [qtyInput, cellSelect].forEach(el => el.addEventListener('change', refresh));
+  qtyInput.addEventListener('input', refresh);
 
   function refresh() {
     const opt     = partSelect.options[partSelect.selectedIndex];
@@ -222,7 +217,7 @@
                    ? cellOpt.text
                    : opt.dataset.cellCode;
 
-    const allFilled = qty > 0 && operatorInput.value.trim();
+    const allFilled = qty > 0;
 
     document.getElementById('confirm-empty').style.display = allFilled ? 'none' : '';
     document.getElementById('confirm-body').style.display  = allFilled ? '' : 'none';
@@ -236,8 +231,21 @@
       document.getElementById('c-after').textContent   = (stock + qty) + ' ' + unit;
     }
 
-    submitBtn.disabled = !(qty > 0 && operatorInput.value.trim() && partSelect.value);
+    submitBtn.disabled = !(qty > 0 && partSelect.value);
   }
+
+  // ── Предвыбор детали из URL-параметра (?part_id=) ──────────
+  {% if selected_part_id %}
+  (function() {
+    const pid = "{{ selected_part_id }}";
+    Array.from(partSelect.options).forEach(opt => {
+      if (opt.value === pid) {
+        opt.selected = true;
+        partSelect.dispatchEvent(new Event('change'));
+      }
+    });
+  })();
+  {% endif %}
 
   refresh();
 })();

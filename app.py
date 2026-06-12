@@ -190,13 +190,12 @@ def raskhod():
         quantity_raw   = request.form.get('quantity', '').strip()
         engine_number  = request.form.get('engine_number', '').strip()
         assembly_stage = request.form.get('assembly_stage', '').strip()
-        operator       = request.form.get('operator', '').strip()
+        operator       = session.get('full_name') or session.get('username', '')
 
         errors = []
         if not part_id:       errors.append('Выберите деталь.')
         if not engine_number: errors.append('Укажите номер двигателя.')
         if not assembly_stage:errors.append('Выберите этап сборки.')
-        if not operator:      errors.append('Укажите исполнителя.')
         if not quantity_raw or not quantity_raw.isdigit() or int(quantity_raw) < 1:
             errors.append('Количество должно быть целым числом больше нуля.')
 
@@ -256,7 +255,7 @@ def raskhod():
         parts=parts,
         assembly_stages=ASSEMBLY_STAGES,
         form=request.form,
-        default_operator=session.get('full_name', ''),
+        current_operator=session.get('full_name') or session.get('username', ''),
     )
 
 
@@ -271,12 +270,11 @@ def prikhod():
         part_id      = request.form.get('part_id', '').strip()
         quantity_raw = request.form.get('quantity', '').strip()
         cell_id      = request.form.get('cell_id', '').strip()
-        operator     = request.form.get('operator', '').strip()
+        operator     = session.get('full_name') or session.get('username', '')
         notes        = request.form.get('notes', '').strip()
 
         errors = []
         if not part_id:  errors.append('Выберите деталь.')
-        if not operator: errors.append('Укажите исполнителя.')
         if not quantity_raw or not quantity_raw.isdigit() or int(quantity_raw) < 1:
             errors.append('Количество должно быть целым числом больше нуля.')
 
@@ -334,12 +332,14 @@ def prikhod():
         'SELECT id, cell_code FROM storage_cells ORDER BY cell_code'
     ).fetchall()
 
+    selected_part_id = request.args.get('part_id', '')
     db.close()
     return render_template('prikhod.html',
         parts=parts,
         cells=cells,
         form=request.form,
-        default_operator=session.get('full_name', ''),
+        selected_part_id=selected_part_id,
+        current_operator=session.get('full_name') or session.get('username', ''),
     )
 
 

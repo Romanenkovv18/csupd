@@ -99,12 +99,10 @@
             <div class="invalid-feedback" id="qty-feedback"></div>
           </div>
           <div class="col-sm-6">
-            <label class="form-label">Исполнитель <span class="req">*</span></label>
-            <input type="text" name="operator" id="operator"
-                   class="form-control fc-dark"
-                   placeholder="ФИО или табельный номер"
-                   value="{{ form.operator if form else default_operator }}"
-                   required>
+            <label class="form-label">Исполнитель</label>
+            <div class="form-control-readonly">
+              <i class="bi bi-person-fill me-1 text-muted"></i>{{ current_operator }}
+            </div>
           </div>
         </div>
       </div>
@@ -183,7 +181,6 @@
   const qtyInput      = document.getElementById('quantity');
   const engineInput   = document.getElementById('engine_number');
   const stageSelect   = document.getElementById('assembly_stage');
-  const operatorInput = document.getElementById('operator');
   const submitBtn     = document.getElementById('submit-btn');
 
   // ── Фильтрация списка деталей ───────────────────────────────
@@ -195,9 +192,9 @@
   });
 
   // ── Обновление панели при любом изменении ──────────────────
-  [partSelect, qtyInput, engineInput, stageSelect, operatorInput]
+  [partSelect, qtyInput, engineInput, stageSelect]
     .forEach(el => el.addEventListener('change', refresh));
-  [qtyInput, engineInput, operatorInput]
+  [qtyInput, engineInput]
     .forEach(el => el.addEventListener('input', refresh));
 
   function refresh() {
@@ -223,8 +220,7 @@
     // Панель итога
     const hasAll = haspart && qty > 0
                 && engineInput.value.trim()
-                && stageSelect.value
-                && operatorInput.value.trim();
+                && stageSelect.value;
 
     document.getElementById('confirm-empty').style.display = hasAll ? 'none' : '';
     document.getElementById('confirm-body').style.display  = hasAll ? '' : 'none';
@@ -254,8 +250,7 @@
                    && qty > 0
                    && qty <= stock
                    && engineInput.value.trim()
-                   && stageSelect.value
-                   && operatorInput.value.trim();
+                   && stageSelect.value;
     submitBtn.disabled = !allFilled;
   }
 

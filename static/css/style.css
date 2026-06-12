@@ -63,7 +63,11 @@ body.light-theme .su-role           { color: #718096; }
 body.light-theme .su-logout         { color: #718096; }
 body.light-theme .main-content      { background: var(--bg); }
 body.light-theme .fc-dark,
-body.light-theme .form-select.fc-dark { background: #fff; border-color: #cbd5e0; color: #1a202c; }
+body.light-theme .form-select.fc-dark,
+body.light-theme select.fc-dark { background: #fff !important; border-color: #cbd5e0 !important; color: #1a202c !important; }
+body.light-theme select.fc-dark option,
+body.light-theme .form-select.fc-dark option { background: #fff; color: #1a202c; }
+body.light-theme .form-control-readonly { background: #f7fafc; border-color: #e2e8f0; color: #1a202c; }
 body.light-theme .igt-dark          { background: #edf2f7; border-color: #cbd5e0; color: #4a5568; }
 body.light-theme .modal-dark        { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .modal-dark-header,
@@ -617,6 +621,24 @@ body {
   min-height: 44px;
 }
 
+/* select и option — читаемый цвет фона */
+select.fc-dark,
+.form-select.fc-dark {
+  background-color: #2a3a5c !important;
+  color: #e0e8ff !important;
+  border: 1px solid #4a6a9c !important;
+}
+select.fc-dark option,
+.form-select.fc-dark option {
+  background: #1e2a45;
+  color: #e0e8ff;
+}
+select.fc-dark option:checked,
+.form-select.fc-dark option:checked {
+  background: #3a5a8c;
+  color: #fff;
+}
+
 .fc-dark::placeholder { color: var(--text-muted) !important; }
 
 .fc-dark:focus {
@@ -625,9 +647,45 @@ body {
   background: var(--bg-card) !important;
   color: var(--text) !important;
 }
+select.fc-dark:focus,
+.form-select.fc-dark:focus {
+  background-color: #2a3a5c !important;
+  border-color: var(--accent) !important;
+  color: #e0e8ff !important;
+}
 
 .fc-dark.is-invalid {
   border-color: var(--red) !important;
+}
+
+/* Read-only поле исполнителя */
+.form-control-readonly {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+/* Кнопка «Пополнить» в таблице деталей */
+.det-replenish-btn {
+  background: rgba(72,187,120,0.1);
+  border: 1px solid rgba(72,187,120,0.3);
+  color: #68d391;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.det-replenish-btn:hover {
+  background: rgba(72,187,120,0.2);
+  border-color: rgba(72,187,120,0.5);
+  color: #9ae6b4;
 }
 
 .igt-dark {
