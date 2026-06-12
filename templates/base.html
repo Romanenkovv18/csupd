@@ -100,7 +100,10 @@
       <!-- Настройки — только admin -->
       {% if current_user and current_user.level >= ROLE_LEVEL['admin'] %}
       <li>
-        <a href="#"><i class="bi bi-gear"></i><span>Настройки</span></a>
+        <a href="{{ url_for('settings') }}"
+           class="{{ 'active' if request.endpoint and request.endpoint.startswith('settings') }}">
+          <i class="bi bi-gear"></i><span>Настройки</span>
+        </a>
       </li>
       {% endif %}
     </ul>
@@ -113,6 +116,10 @@
         <div class="su-name">{{ current_user.full_name }}</div>
         <div class="su-role">{{ current_user.role_name }}</div>
       </div>
+      <button type="button" class="su-theme-btn" id="theme-toggle-btn"
+              onclick="toggleTheme()" title="Сменить тему">
+        <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
+      </button>
       <a href="{{ url_for('logout') }}" class="su-logout" title="Выйти">
         <i class="bi bi-box-arrow-right"></i>
       </a>
@@ -146,6 +153,23 @@
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+  const t = localStorage.getItem('csupd-theme');
+  if (t === 'light') document.body.classList.add('light-theme');
+})();
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  localStorage.setItem('csupd-theme', isLight ? 'light' : 'dark');
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.className = isLight ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+}
+(function() {
+  const icon = document.getElementById('theme-icon');
+  if (icon && localStorage.getItem('csupd-theme') === 'light')
+    icon.className = 'bi bi-sun-fill';
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -3,32 +3,81 @@
    ===================================================== */
 
 :root {
-  --bg:          #1a1a2e;
-  --bg-side:     #16213e;
-  --bg-card:     #1e2a45;
-  --bg-table:    #16213e;
-  --bg-thead:    #0f2040;
-  --border:      rgba(255, 255, 255, 0.08);
-  --sidebar-w:   240px;
+  --bg:           #1a1a2e;
+  --bg-side:      #16213e;
+  --bg-card:      #1e2a45;
+  --bg-table:     #16213e;
+  --bg-thead:     #0f2040;
+  --border:       rgba(255, 255, 255, 0.08);
+  --sidebar-w:    240px;
 
-  --text:        #dde3f0;
-  --text-muted:  #7a8fb5;
-  --text-mono:   #8ab4d4;
+  --text:         #dde3f0;
+  --text-primary: #dde3f0;
+  --text-secondary:#a0b0cc;
+  --text-muted:   #7a8fb5;
+  --text-mono:    #8ab4d4;
 
-  --red:         #e05263;
-  --red-bg:      rgba(220, 53, 69, 0.13);
-  --red-border:  rgba(220, 53, 69, 0.35);
+  --card-bg:      #1e2a45;
 
-  --yellow:      #f0b429;
-  --yellow-bg:   rgba(240, 180, 41, 0.12);
-  --yellow-border: rgba(240, 180, 41, 0.35);
+  --red:          #e05263;
+  --red-bg:       rgba(220, 53, 69, 0.13);
+  --red-border:   rgba(220, 53, 69, 0.35);
 
-  --green:       #3ecf8e;
-  --green-bg:    rgba(62, 207, 142, 0.09);
+  --yellow:       #f0b429;
+  --yellow-bg:    rgba(240, 180, 41, 0.12);
+  --yellow-border:rgba(240, 180, 41, 0.35);
+
+  --green:        #3ecf8e;
+  --green-bg:     rgba(62, 207, 142, 0.09);
   --green-border: rgba(62, 207, 142, 0.3);
 
-  --accent:      #63b3ed;
+  --accent:       #63b3ed;
 }
+
+/* ── Светлая тема ────────────────────────────────────────────── */
+body.light-theme {
+  --bg:           #f0f4f8;
+  --bg-side:      #e2e8f0;
+  --bg-card:      #ffffff;
+  --bg-table:     #f7fafc;
+  --bg-thead:     #edf2f7;
+  --border:       rgba(0, 0, 0, 0.10);
+
+  --text:         #1a202c;
+  --text-primary: #1a202c;
+  --text-secondary:#4a5568;
+  --text-muted:   #718096;
+  --text-mono:    #2d3748;
+
+  --card-bg:      #ffffff;
+
+  --accent:       #3182ce;
+}
+body.light-theme .sidebar           { background: var(--bg-side); }
+body.light-theme .sidebar-nav a     { color: #4a5568; }
+body.light-theme .sidebar-nav a:hover,
+body.light-theme .sidebar-nav a.active { color: var(--accent); background: rgba(49,130,206,0.08); }
+body.light-theme .sidebar-user      { border-top-color: rgba(0,0,0,0.08); }
+body.light-theme .su-name           { color: #1a202c; }
+body.light-theme .su-role           { color: #718096; }
+body.light-theme .su-logout         { color: #718096; }
+body.light-theme .main-content      { background: var(--bg); }
+body.light-theme .fc-dark,
+body.light-theme .form-select.fc-dark { background: #fff; border-color: #cbd5e0; color: #1a202c; }
+body.light-theme .igt-dark          { background: #edf2f7; border-color: #cbd5e0; color: #4a5568; }
+body.light-theme .modal-dark        { background: #ffffff; border-color: #e2e8f0; }
+body.light-theme .modal-dark-header,
+body.light-theme .modal-dark-footer { background: #f7fafc; border-color: #e2e8f0; }
+body.light-theme .modal-dark .modal-title,
+body.light-theme .modal-dark .modal-body { color: #1a202c; }
+body.light-theme table              { color: #1a202c; }
+body.light-theme .det-table thead th { color: #718096; border-color: rgba(0,0,0,0.08); }
+body.light-theme .det-table tbody td { border-color: rgba(0,0,0,0.04); }
+body.light-theme .det-row:hover td  { background: rgba(0,0,0,0.025); }
+body.light-theme .page-title        { color: #1a202c; }
+body.light-theme .page-sub          { color: #718096; }
+body.light-theme .flash-item        { border-color: rgba(0,0,0,0.1); }
+body.light-theme .tl-dot.tl-red    { box-shadow: 0 0 5px rgba(220,53,69,0.4); }
 
 /* ── Reset ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
@@ -2210,3 +2259,113 @@ body {
   font-size: 0.82rem;
   font-weight: 700;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   НАСТРОЙКИ (/settings)
+═══════════════════════════════════════════════════════════════ */
+
+/* Бейджи ролей */
+.sett-role-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px;
+}
+.sett-role-sborshik  { background: rgba(160,176,204,0.12); color: #a0b0cc; }
+.sett-role-kladovshik{ background: rgba(99,179,237,0.12);  color: #63b3ed; }
+.sett-role-master    { background: rgba(246,201,14,0.12);  color: #f6c90e; }
+.sett-role-admin     { background: rgba(245,101,101,0.12); color: #fc8181; }
+
+/* Кнопка удаления */
+.sett-del-btn { color: rgba(245,101,101,0.6) !important; }
+.sett-del-btn:hover { border-color: rgba(245,101,101,0.4) !important; color: #fc8181 !important; }
+
+/* Пороги: поле ввода */
+.sett-thr-input {
+  width: 90px;
+  text-align: center;
+  display: inline-block;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+.sett-thr-footer {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 0.5rem;
+}
+
+/* Тема */
+.sett-theme-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+.sett-theme-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 2rem 2.5rem;
+  min-width: 360px;
+  text-align: center;
+}
+.sett-theme-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.sett-theme-desc { font-size: 0.82rem; color: var(--text-muted); }
+.sett-theme-options {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+.sett-theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 1.2rem 1.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 110px;
+}
+.sett-theme-btn i { font-size: 1.6rem; }
+.sett-theme-btn span { font-size: 0.9rem; font-weight: 600; }
+.sett-theme-btn small { font-size: 0.68rem; }
+.sett-theme-btn:hover { border-color: rgba(99,179,237,0.4); color: var(--text-primary); }
+.sett-theme-btn-active {
+  border-color: #63b3ed;
+  background: rgba(99,179,237,0.08);
+  color: #63b3ed;
+}
+.sett-theme-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* Операции сборки */
+.sett-stages-eng {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+/* Кнопка смены темы в сайдбаре */
+.su-theme-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.su-theme-btn:hover { color: var(--text-primary); }

@@ -1020,6 +1020,170 @@ def assembly_finish(asm_id):
         done_count=done_count, progress_pct=progress_pct)
 
 
+# ── Настройки (только admin) ──────────────────────────────────────────────────
+
+def _admin_required():
+    return ROLE_LEVEL.get(session.get('role'), 0) >= ROLE_LEVEL['admin']
+
+
+@app.route('/settings')
+@login_required
+def settings():
+    if not _admin_required():
+        flash('Доступ только для администратора.', 'danger')
+        return redirect(url_for('dashboard'))
+    db  = get_db()
+    tab = request.args.get('tab', 'users')
+
+    users      = db.execute("SELECT id, username, full_name, role FROM users ORDER BY role, username").fetchall()
+    all_parts  = db.execute(
+        "SELECT id, article, name, red_threshold, yellow_threshold FROM parts ORDER BY id"
+    ).fetchall()
+    stages     = db.execute(
+        "SELECT * FROM assembly_stages ORDER BY engine_type, stage_number"
+    ).fetchall()
+    eng_types  = [r['engine_type'] for r in
+                  db.execute("SELECT DISTINCT engine_type FROM assembly_stages ORDER BY engine_type").fetchall()]
+    db.close()
+    return render_template('settings.html',
+        tab=tab, users=users, all_parts=all_parts,
+        stages=stages, eng_types=eng_types,
+        ROLE_NAMES=ROLE_NAMES)
+
+
+@app.route('/settings/users/add', methods=['POST'])
+@login_required
+def settings_users_add():
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    from werkzeug.security import generate_password_hash
+    username  = request.form['username'].strip()
+    password  = request.form['password']
+    full_name = request.form['full_name'].strip()
+    role      = request.form['role']
+    if not username or not password:
+        flash('Логин и пароль обязательны.', 'danger')
+        return redirect(url_for('settings', tab='users'))
+    db = get_db()
+    try:
+        db.execute(
+            "INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)",
+            (username, generate_password_hash(password), full_name, role)
+        )
+        db.commit()
+        flash(f'Пользователь «{username}» создан.', 'success')
+    except Exception:
+        flash('Логин уже занят.', 'danger')
+    db.close()
+    return redirect(url_for('settings', tab='users'))
+
+
+@app.route('/settings/users/<int:uid>/edit', methods=['POST'])
+@login_required
+def settings_users_edit(uid):
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    from werkzeug.security import generate_password_hash
+    full_name = request.form['full_name'].strip()
+    role      = request.form['role']
+    new_pass  = request.form.get('new_password', '').strip()
+    db = get_db()
+    if new_pass:
+        db.execute(
+            "UPDATE users SET full_name=?, role=?, password_hash=? WHERE id=?",
+            (full_name, role, generate_password_hash(new_pass), uid)
+        )
+    else:
+        db.execute("UPDATE users SET full_name=?, role=? WHERE id=?", (full_name, role, uid))
+    db.commit()
+    db.close()
+    flash('Пользователь обновлён.', 'success')
+    return redirect(url_for('settings', tab='users'))
+
+
+@app.route('/settings/users/<int:uid>/delete', methods=['POST'])
+@login_required
+def settings_users_delete(uid):
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    if uid == session['user_id']:
+        flash('Нельзя удалить самого себя.', 'danger')
+        return redirect(url_for('settings', tab='users'))
+    db = get_db()
+    db.execute("DELETE FROM users WHERE id=?", (uid,))
+    db.commit()
+    db.close()
+    flash('Пользователь удалён.', 'success')
+    return redirect(url_for('settings', tab='users'))
+
+
+@app.route('/settings/thresholds', methods=['POST'])
+@login_required
+def settings_thresholds():
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    db = get_db()
+    part_ids = request.form.getlist('part_id')
+    updated = 0
+    for pid in part_ids:
+        red = request.form.get(f'red_{pid}', type=int)
+        yel = request.form.get(f'yel_{pid}', type=int)
+        if red is not None and yel is not None and yel >= red >= 0:
+            db.execute(
+                "UPDATE parts SET red_threshold=?, yellow_threshold=? WHERE id=?",
+                (red, yel, int(pid))
+            )
+            updated += 1
+    db.commit()
+    db.close()
+    flash(f'Обновлено порогов: {updated}.', 'success')
+    return redirect(url_for('settings', tab='thresholds'))
+
+
+@app.route('/settings/stages/add', methods=['POST'])
+@login_required
+def settings_stages_add():
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    engine_type  = request.form['engine_type'].strip()
+    stage_number = request.form.get('stage_number', type=int)
+    stage_name   = request.form['stage_name'].strip()
+    description  = request.form.get('description', '').strip()
+    if not engine_type or not stage_name or not stage_number:
+        flash('Заполните все обязательные поля.', 'danger')
+        return redirect(url_for('settings', tab='stages'))
+    db = get_db()
+    db.execute(
+        "INSERT INTO assembly_stages (engine_type, stage_number, stage_name, description) VALUES (?,?,?,?)",
+        (engine_type, stage_number, stage_name, description or None)
+    )
+    db.commit()
+    db.close()
+    flash(f'Операция «{stage_name}» добавлена.', 'success')
+    return redirect(url_for('settings', tab='stages'))
+
+
+@app.route('/settings/stages/<int:sid>/delete', methods=['POST'])
+@login_required
+def settings_stages_delete(sid):
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    db = get_db()
+    used = db.execute(
+        "SELECT COUNT(*) FROM assembly_history ah WHERE ah.stage_id=? AND ah.is_cancelled=0",
+        (sid,)
+    ).fetchone()[0]
+    if used:
+        flash('Нельзя удалить операцию — есть история выполнения.', 'danger')
+    else:
+        db.execute("DELETE FROM stage_parts WHERE stage_id=?", (sid,))
+        db.execute("DELETE FROM assembly_stages WHERE id=?", (sid,))
+        db.commit()
+        flash('Операция удалена.', 'success')
+    db.close()
+    return redirect(url_for('settings', tab='stages'))
+
+
 # ── Отчёты ────────────────────────────────────────────────────────────────────
 
 @app.route('/reports')

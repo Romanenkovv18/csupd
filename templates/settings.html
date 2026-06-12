@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Настройки</h1>
+    <span class="page-sub">Администрирование системы</span>
+  </div>
+</div>
+
+<!-- ── Вкладки ──────────────────────────────────────────────────────────────── -->
+<ul class="nav rep-tabs mb-4">
+  <li><a class="rep-tab {{ 'active' if tab == 'users' }}"
+         href="{{ url_for('settings', tab='users') }}">
+    <i class="bi bi-people"></i> Пользователи
+  </a></li>
+  <li><a class="rep-tab {{ 'active' if tab == 'thresholds' }}"
+         href="{{ url_for('settings', tab='thresholds') }}">
+    <i class="bi bi-sliders"></i> Пороги светофора
+  </a></li>
+  <li><a class="rep-tab {{ 'active' if tab == 'theme' }}"
+         href="{{ url_for('settings', tab='theme') }}">
+    <i class="bi bi-palette"></i> Тема
+  </a></li>
+  <li><a class="rep-tab {{ 'active' if tab == 'stages' }}"
+         href="{{ url_for('settings', tab='stages') }}">
+    <i class="bi bi-list-ol"></i> Операции сборки
+  </a></li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     ВКЛАДКА: ПОЛЬЗОВАТЕЛИ
+══════════════════════════════════════════════════════ -->
+{% if tab == 'users' %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="rep-section-title mb-0">{{ users | length }} пользователей</div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+    <i class="bi bi-plus-lg"></i> Добавить
+  </button>
+</div>
+
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th>Логин</th>
+        <th>ФИО</th>
+        <th>Роль</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="det-row">
+        <td class="det-article">{{ u.username }}</td>
+        <td class="det-name">{{ u.full_name }}</td>
+        <td>
+          <span class="sett-role-badge sett-role-{{ u.role }}">
+            {{ ROLE_NAMES[u.role] }}
+          </span>
+        </td>
+        <td class="text-end">
+          <button class="btn det-edit-btn me-1"
+                  data-bs-toggle="modal" data-bs-target="#editUserModal"
+                  data-uid="{{ u.id }}"
+                  data-username="{{ u.username }}"
+                  data-fullname="{{ u.full_name }}"
+                  data-role="{{ u.role }}"
+                  title="Редактировать">
+            <i class="bi bi-pencil"></i>
+          </button>
+          {% if u.id != current_user.id %}
+          <button class="btn det-edit-btn sett-del-btn"
+                  data-bs-toggle="modal" data-bs-target="#delUserModal"
+                  data-uid="{{ u.id }}"
+                  data-username="{{ u.username }}"
+                  title="Удалить">
+            <i class="bi bi-trash3"></i>
+          </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Модал: добавить -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Новый пользователь</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('settings_users_add') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Логин <span class="req">*</span></label>
+            <input type="text" name="username" class="form-control fc-dark" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Пароль <span class="req">*</span></label>
+            <input type="password" name="password" class="form-control fc-dark" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">ФИО</label>
+            <input type="text" name="full_name" class="form-control fc-dark">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Роль <span class="req">*</span></label>
+            <select name="role" class="form-select fc-dark" required>
+              {% for k, v in ROLE_NAMES.items() %}
+              <option value="{{ k }}">{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg"></i> Создать
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Модал: редактировать -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Редактировать</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="editUserForm">
+        <div class="modal-body">
+          <div class="mb-2 text-muted small" id="edit-uname"></div>
+          <div class="mb-3">
+            <label class="form-label">ФИО</label>
+            <input type="text" name="full_name" id="edit-fullname" class="form-control fc-dark">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Роль</label>
+            <select name="role" id="edit-role" class="form-select fc-dark">
+              {% for k, v in ROLE_NAMES.items() %}
+              <option value="{{ k }}">{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Новый пароль <span class="text-muted small">(оставьте пустым — не менять)</span></label>
+            <input type="password" name="new_password" class="form-control fc-dark">
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg"></i> Сохранить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Модал: удалить -->
+<div class="modal fade" id="delUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-trash3 me-2 text-danger"></i>Удалить?</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Удалить пользователя <strong id="del-uname"></strong>?
+      </div>
+      <div class="modal-footer modal-dark-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Нет</button>
+        <form method="post" id="delUserForm">
+          <button type="submit" class="btn btn-danger px-3">Удалить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     ВКЛАДКА: ПОРОГИ СВЕТОФОРА
+══════════════════════════════════════════════════════ -->
+{% if tab == 'thresholds' %}
+<div class="rep-section-title mb-2">
+  Редактирование порогов · <span class="text-muted">{{ all_parts | length }} позиций</span>
+</div>
+<form method="post" action="{{ url_for('settings_thresholds') }}">
+  <div class="table-responsive">
+    <table class="table det-table">
+      <thead>
+        <tr>
+          <th>Артикул</th>
+          <th>Наименование</th>
+          <th class="text-center" style="width:130px">
+            <span class="tl-dot tl-red"></span> Красный
+          </th>
+          <th class="text-center" style="width:130px">
+            <span class="tl-dot tl-yellow"></span> Жёлтый
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in all_parts %}
+        <input type="hidden" name="part_id" value="{{ p.id }}">
+        <tr class="det-row">
+          <td class="det-article">{{ p.article }}</td>
+          <td class="det-name">{{ p.name }}</td>
+          <td class="text-center">
+            <input type="number" name="red_{{ p.id }}" value="{{ p.red_threshold or 0 }}"
+                   class="form-control fc-dark sett-thr-input" min="0">
+          </td>
+          <td class="text-center">
+            <input type="number" name="yel_{{ p.id }}" value="{{ p.yellow_threshold or 0 }}"
+                   class="form-control fc-dark sett-thr-input" min="0">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="sett-thr-footer">
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg"></i> Сохранить все пороги
+    </button>
+  </div>
+</form>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     ВКЛАДКА: ТЕМА
+══════════════════════════════════════════════════════ -->
+{% if tab == 'theme' %}
+<div class="sett-theme-wrap">
+  <div class="sett-theme-card">
+    <div class="sett-theme-title">Тема интерфейса</div>
+    <div class="sett-theme-desc">Выбор сохраняется в браузере</div>
+
+    <div class="sett-theme-options mt-4">
+      <button class="sett-theme-btn" id="btn-dark" onclick="setTheme('dark')">
+        <i class="bi bi-moon-stars-fill"></i>
+        <span>Тёмная</span>
+        <small>по умолчанию</small>
+      </button>
+      <button class="sett-theme-btn" id="btn-light" onclick="setTheme('light')">
+        <i class="bi bi-sun-fill"></i>
+        <span>Светлая</span>
+        <small>экспериментальная</small>
+      </button>
+    </div>
+
+    <div class="sett-theme-preview mt-4" id="theme-status"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     ВКЛАДКА: ОПЕРАЦИИ СБОРКИ
+══════════════════════════════════════════════════════ -->
+{% if tab == 'stages' %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="rep-section-title mb-0">Операции сборки · {{ stages | length }} записей</div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStageModal">
+    <i class="bi bi-plus-lg"></i> Добавить операцию
+  </button>
+</div>
+
+{% for et in eng_types %}
+{% set et_stages = stages | selectattr('engine_type', 'eq', et) | list %}
+<div class="sett-stages-group mb-4">
+  <div class="sett-stages-eng">{{ et }}</div>
+  <div class="table-responsive">
+    <table class="table det-table">
+      <thead>
+        <tr>
+          <th style="width:3rem">№</th>
+          <th>Название операции</th>
+          <th>Описание</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in et_stages %}
+        <tr class="det-row">
+          <td class="text-muted fw-600">{{ s.stage_number }}</td>
+          <td class="det-name">{{ s.stage_name }}</td>
+          <td class="text-muted small">{{ s.description or '—' }}</td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('settings_stages_delete', sid=s.id) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Удалить операцию «{{ s.stage_name }}»?')">
+              <button type="submit" class="btn det-edit-btn sett-del-btn" title="Удалить">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Модал: добавить операцию -->
+<div class="modal fade" id="addStageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Новая операция</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('settings_stages_add') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Тип двигателя <span class="req">*</span></label>
+            <input type="text" name="engine_type" class="form-control fc-dark"
+                   placeholder="ТВ3-117" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Номер операции <span class="req">*</span></label>
+            <input type="number" name="stage_number" class="form-control fc-dark" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Название <span class="req">*</span></label>
+            <input type="text" name="stage_name" class="form-control fc-dark" required>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Описание</label>
+            <input type="text" name="description" class="form-control fc-dark">
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg"></i> Добавить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Пользователи: заполнение модалов ─────────────────────── */
+const editModal = document.getElementById('editUserModal');
+if (editModal) {
+  editModal.addEventListener('show.bs.modal', e => {
+    const b = e.relatedTarget;
+    document.getElementById('edit-uname').textContent    = b.dataset.username;
+    document.getElementById('edit-fullname').value       = b.dataset.fullname;
+    document.getElementById('edit-role').value           = b.dataset.role;
+    document.getElementById('editUserForm').action       =
+      '/settings/users/' + b.dataset.uid + '/edit';
+  });
+}
+const delModal = document.getElementById('delUserModal');
+if (delModal) {
+  delModal.addEventListener('show.bs.modal', e => {
+    const b = e.relatedTarget;
+    document.getElementById('del-uname').textContent = b.dataset.username;
+    document.getElementById('delUserForm').action    =
+      '/settings/users/' + b.dataset.uid + '/delete';
+  });
+}
+
+/* ── Тема ─────────────────────────────────────────────────── */
+function setTheme(t) {
+  localStorage.setItem('csupd-theme', t);
+  document.body.classList.toggle('light-theme', t === 'light');
+  updateThemeUI();
+}
+function updateThemeUI() {
+  const t = localStorage.getItem('csupd-theme') || 'dark';
+  const status = document.getElementById('theme-status');
+  if (status) {
+    status.textContent = 'Активная тема: ' + (t === 'light' ? 'Светлая' : 'Тёмная');
+  }
+  const bd = document.getElementById('btn-dark');
+  const bl = document.getElementById('btn-light');
+  if (bd) bd.classList.toggle('sett-theme-btn-active', t !== 'light');
+  if (bl) bl.classList.toggle('sett-theme-btn-active', t === 'light');
+}
+updateThemeUI();
+</script>
+{% endblock %}
