@@ -1009,6 +1009,562 @@ body {
   white-space: nowrap;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   МОДУЛЬ СБОРКИ — СПИСОК СБОРОК (assembly.html)
+═══════════════════════════════════════════════════════════════ */
+
+.asm-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.asm-card:hover {
+  border-color: rgba(99,179,237,0.3);
+}
+.asm-card-done {
+  opacity: 0.7;
+}
+.asm-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem 0.5rem;
+}
+.asm-eng-num {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.asm-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+}
+.asm-badge-active {
+  background: rgba(99,179,237,0.15);
+  color: #63b3ed;
+}
+.asm-badge-done {
+  background: rgba(72,187,120,0.15);
+  color: #48bb78;
+}
+.asm-card-body {
+  padding: 0 1.2rem 1rem;
+}
+.asm-type-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+.asm-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.asm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.07);
+}
+.asm-meta-row {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+.asm-card-foot {
+  padding: 0 1.2rem 1.2rem;
+}
+.asm-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+.asm-empty i {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   МОДУЛЬ СБОРКИ — РАБОЧИЙ ЭКРАН (assembly_work.html)
+═══════════════════════════════════════════════════════════════ */
+
+.asm-work-wrap {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 2rem);
+  max-height: calc(100vh - 2rem);
+}
+
+/* Шапка */
+.asm-work-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.asm-work-title {
+  flex: 1;
+  min-width: 0;
+}
+.asm-work-engnum {
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: block;
+}
+.asm-work-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.asm-work-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.asm-work-pct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.asm-hdr-progress {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.07);
+}
+
+/* Три панели */
+.asm-panels {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Левая панель — операции */
+.asm-ops-panel {
+  width: 22%;
+  flex-shrink: 0;
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.asm-ops-counter {
+  padding: 0.75rem 1rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.asm-ops-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+.asm-op-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  cursor: default;
+  transition: background 0.15s;
+}
+.asm-op-done { opacity: 0.55; }
+.asm-op-current {
+  background: rgba(99,179,237,0.08);
+  border-left: 2px solid #63b3ed;
+}
+.asm-op-pending { opacity: 0.35; }
+.asm-op-dot {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.asm-op-done .asm-op-dot  { color: #48bb78; }
+.asm-op-current .asm-op-dot { color: #63b3ed; }
+.asm-op-pending .asm-op-dot { color: #4a5568; }
+.asm-op-num {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.asm-op-name {
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* Центральная панель — детали */
+.asm-parts-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.asm-parts-header {
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.asm-parts-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.asm-parts-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.asm-shortage-alert {
+  background: rgba(245,101,101,0.12);
+  border: 1px solid rgba(245,101,101,0.3);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  color: #fc8181;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.asm-parts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  flex: 1;
+}
+
+/* Карточка детали */
+.part-card {
+  background: var(--card-bg);
+  border: 2px solid;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 150px;
+}
+.part-card-green  { border-color: rgba(72,187,120,0.45); }
+.part-card-yellow { border-color: rgba(240,180,41,0.5); }
+.part-card-red    { border-color: rgba(245,101,101,0.55); }
+
+.part-card-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.3;
+  flex: 1;
+}
+.part-card-article {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.part-card-shortage {
+  font-size: 0.72rem;
+  color: #fc8181;
+  background: rgba(245,101,101,0.08);
+  border-radius: 5px;
+  padding: 0.25rem 0.5rem;
+}
+.part-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.part-card-cell {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.part-card-qty {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.part-card-unit {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Правая панель — инфо о двигателе */
+.asm-info-panel {
+  width: 22%;
+  flex-shrink: 0;
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  overflow-y: auto;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.asm-info-block {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.asm-info-block:last-child { border-bottom: none; }
+.asm-info-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.asm-info-engnum {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.asm-info-type {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.asm-info-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.asm-info-pct {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #63b3ed;
+}
+.asm-info-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.07);
+}
+.asm-info-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.asm-info-curop {
+  background: rgba(99,179,237,0.05);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem !important;
+}
+.asm-info-curname {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.asm-info-curdesc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  line-height: 1.3;
+}
+
+/* Панель действий */
+.asm-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 0.75rem;
+  flex-shrink: 0;
+}
+.asm-btn-cancel {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.1);
+  height: 52px;
+  padding: 0 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.asm-btn-cancel:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+.asm-btn-complete {
+  background: #276749;
+  border-color: #276749;
+  color: #fff;
+  height: 60px;
+  padding: 0 2.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  transition: background 0.2s, opacity 0.2s;
+}
+.asm-btn-complete:hover:not(.disabled) {
+  background: #2f855a;
+  border-color: #2f855a;
+  color: #fff;
+}
+.asm-btn-complete.disabled {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+  color: #fc8181;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+/* Модалы */
+.modal-dark {
+  background: #1e2340;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.modal-dark-header {
+  background: #1a1f38;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  color: var(--text-primary);
+}
+.modal-dark-footer {
+  background: #1a1f38;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.asm-confirm-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.asm-confirm-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.asm-cl-name { color: var(--text-primary); }
+.asm-cl-qty  { color: #63b3ed; font-weight: 700; }
+
+/* ═══════════════════════════════════════════════════════════════
+   МОДУЛЬ СБОРКИ — ИТОГИ (assembly_finish.html)
+═══════════════════════════════════════════════════════════════ */
+
+.asm-finish-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 1.5rem 1.8rem;
+  margin-bottom: 1.5rem;
+}
+.asm-finish-icon { font-size: 3rem; flex-shrink: 0; }
+.asm-finish-info { flex: 1; }
+.asm-finish-engnum {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.asm-finish-type {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.asm-finish-done-label {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: #48bb78;
+  font-weight: 600;
+}
+.asm-finish-progress-label {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: #63b3ed;
+  font-weight: 600;
+}
+.asm-finish-stats {
+  display: flex;
+  gap: 2rem;
+  flex-shrink: 0;
+}
+.asm-fstat { text-align: center; }
+.asm-fstat-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.asm-fstat-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.asm-finish-progress-wrap {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+.asm-finish-progress {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.07);
+}
+
+.asm-finish-history {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+.asm-finish-sec-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.asm-finish-ops { display: flex; flex-direction: column; gap: 0; }
+.asm-finish-op {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.asm-finish-op:last-child { border-bottom: none; }
+.asm-finish-op-done   { opacity: 0.9; }
+.asm-finish-op-current { background: rgba(99,179,237,0.04); border-radius: 6px; padding: 0.65rem 0.5rem; }
+.asm-finish-op-pending { opacity: 0.4; }
+.asm-finish-op-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 1.5rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+.asm-finish-op-body { flex: 1; }
+.asm-finish-op-name { font-size: 0.9rem; font-weight: 600; }
+.asm-finish-op-desc { font-size: 0.78rem; color: var(--text-muted); }
+.asm-finish-op-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+.asm-finish-op-icon { flex-shrink: 0; font-size: 1.1rem; }
+
+.asm-finish-actions {
+  display: flex;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
 .status-создана   { background: rgba(99,179,237,0.15); color: var(--accent); }
 .status-в-работе  { background: rgba(240,180,41,0.15);  color: var(--yellow); }
 .status-выполнена { background: rgba(62,207,142,0.15);  color: var(--green);  }

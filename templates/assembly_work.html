@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Сборка · {{ asm.engine_number }}{% endblock %}
+
+{% block content %}
+<div class="asm-work-wrap">
+
+  <!-- ── Шапка ─────────────────────────────────────────────────────────────── -->
+  <div class="asm-work-header">
+    <a href="{{ url_for('assembly') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div class="asm-work-title">
+      <span class="asm-work-engnum">{{ asm.engine_number }}</span>
+      <span class="asm-work-sub">{{ asm.engine_type }} · {% if current_stage %}{{ current_stage.stage_name }}{% endif %}</span>
+    </div>
+    <div class="asm-work-progress-mini">
+      <span class="asm-work-pct">{{ progress_pct }}%</span>
+      <div class="progress asm-hdr-progress">
+        <div class="progress-bar bg-primary" style="width:{{ progress_pct }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Три панели ────────────────────────────────────────────────────────── -->
+  <div class="asm-panels">
+
+    <!-- Левая: список операций -->
+    <div class="asm-ops-panel">
+      <div class="asm-ops-counter">
+        Операция <strong>{{ asm.current_stage }}</strong> из {{ total_stages }}
+      </div>
+      <div class="asm-ops-list">
+        {% for item in stages %}
+        {% set s = item.stage %}
+        {% set st = item.status %}
+        <div class="asm-op-item asm-op-{{ st }}">
+          <div class="asm-op-dot">
+            {% if st == 'done' %}
+              <i class="bi bi-check-circle-fill"></i>
+            {% elif st == 'current' %}
+              <i class="bi bi-arrow-right-circle-fill"></i>
+            {% else %}
+              <i class="bi bi-circle"></i>
+            {% endif %}
+          </div>
+          <div class="asm-op-text">
+            <div class="asm-op-num">{{ s.stage_number }}</div>
+            <div class="asm-op-name">{{ s.stage_name }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Центральная: карточки деталей -->
+    <div class="asm-parts-panel">
+      {% if current_stage %}
+      <div class="asm-parts-header">
+        <div class="asm-parts-title">{{ current_stage.stage_name }}</div>
+        {% if current_stage.description %}
+        <div class="asm-parts-sub">{{ current_stage.description }}</div>
+        {% endif %}
+      </div>
+
+      {% if has_shortage %}
+      <div class="asm-shortage-alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Недостаточно деталей на складе — обратитесь к кладовщику
+      </div>
+      {% endif %}
+
+      <div class="asm-parts-grid">
+        {% for p in current_parts %}
+        <div class="part-card part-card-{{ p.card_status }}">
+          <div class="part-card-name">{{ p.name }}</div>
+          <div class="part-card-article">арт.&nbsp;{{ p.article }}</div>
+          {% if p.shortage %}
+          <div class="part-card-shortage">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            Дефицит: есть {{ p.stock_qty }}, нужно {{ p.needed }}
+          </div>
+          {% endif %}
+          <div class="part-card-bottom">
+            <div class="part-card-cell">
+              <i class="bi bi-geo-alt-fill"></i>
+              {{ p.cell_code }}
+            </div>
+            <div class="part-card-qty {{ 'text-danger' if p.shortage else '' }}">
+              {{ p.needed }}&thinsp;<span class="part-card-unit">{{ p.unit }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Правая: инфо о двигателе -->
+    <div class="asm-info-panel">
+      <div class="asm-info-block">
+        <div class="asm-info-label">Двигатель</div>
+        <div class="asm-info-engnum">{{ asm.engine_number }}</div>
+        <div class="asm-info-type">{{ asm.engine_type }}</div>
+      </div>
+      <div class="asm-info-block">
+        <div class="asm-info-label">Начало сборки</div>
+        <div class="asm-info-val">{{ asm.started_at[:10] }}</div>
+      </div>
+      <div class="asm-info-block">
+        <div class="asm-info-label">Сборщик</div>
+        <div class="asm-info-val">{{ asm.assembler }}</div>
+      </div>
+      <div class="asm-info-block">
+        <div class="asm-info-label">Прогресс сборки</div>
+        <div class="asm-info-pct">{{ progress_pct }}%</div>
+        <div class="progress asm-info-progress mb-1">
+          <div class="progress-bar bg-primary" style="width:{{ progress_pct }}%"></div>
+        </div>
+        <div class="asm-info-sub">{{ done_count }} из {{ total_stages }} операций</div>
+      </div>
+      {% if current_stage %}
+      <div class="asm-info-block asm-info-curop">
+        <div class="asm-info-label">Текущая операция</div>
+        <div class="asm-info-curname">{{ current_stage.stage_name }}</div>
+        {% if current_stage.description %}
+        <div class="asm-info-curdesc">{{ current_stage.description }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="asm-info-block">
+        <div class="asm-info-label">Деталей в операции</div>
+        <div class="asm-info-val">{{ current_parts | length }} позиций</div>
+      </div>
+    </div>
+
+  </div><!-- /asm-panels -->
+
+  <!-- ── Панель действий ──────────────────────────────────────────────────── -->
+  <div class="asm-action-bar">
+    {% if last_history %}
+    <button type="button" class="btn asm-btn-cancel"
+            data-bs-toggle="modal" data-bs-target="#cancelModal">
+      <i class="bi bi-arrow-counterclockwise"></i>
+      Отменить операцию
+    </button>
+    {% else %}
+    <div></div>
+    {% endif %}
+
+    <button type="button"
+            class="btn asm-btn-complete {{ 'disabled' if has_shortage }}"
+            {% if not has_shortage %}data-bs-toggle="modal" data-bs-target="#completeModal"{% endif %}
+            {% if has_shortage %}title="Недостаточно деталей на складе"{% endif %}>
+      {% if has_shortage %}
+        <i class="bi bi-slash-circle"></i> Нет деталей
+      {% else %}
+        <i class="bi bi-check-circle-fill"></i> Операция выполнена
+      {% endif %}
+    </button>
+  </div>
+
+</div><!-- /asm-work-wrap -->
+
+<!-- ── Модал: подтверждение выполнения ────────────────────────────────────── -->
+<div class="modal fade" id="completeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title">
+          <i class="bi bi-check-circle me-2 text-success"></i>Подтвердить списание
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-2">Операция: <strong>{% if current_stage %}{{ current_stage.stage_name }}{% endif %}</strong></p>
+        <p class="mb-2">Будет списано:</p>
+        <ul class="asm-confirm-list">
+          {% for p in current_parts %}
+          <li>
+            <span class="asm-cl-name">{{ p.name }}</span>
+            <span class="asm-cl-qty">{{ p.needed }}&thinsp;{{ p.unit }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="modal-footer modal-dark-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <form method="post" action="{{ url_for('assembly_complete', asm_id=asm.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-success px-4">
+            <i class="bi bi-check-circle-fill"></i> Подтвердить
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Модал: подтверждение отмены ────────────────────────────────────────── -->
+{% if last_history %}
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title">
+          <i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Отменить операцию
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Вернуть операцию <strong>{{ last_history.stage_number }}. «{{ last_history.stage_name }}»</strong>?</p>
+        <p class="text-muted small">Все списанные детали будут возвращены на баланс склада.</p>
+      </div>
+      <div class="modal-footer modal-dark-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Нет</button>
+        <form method="post" action="{{ url_for('assembly_cancel', asm_id=asm.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-warning px-4">
+            <i class="bi bi-arrow-counterclockwise"></i> Отменить операцию
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

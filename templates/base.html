@@ -48,6 +48,12 @@
         </a>
       </li>
       <li>
+        <a href="{{ url_for('assembly') }}"
+           class="{{ 'active' if request.endpoint in ('assembly','assembly_work','assembly_finish') }}">
+          <i class="bi bi-gear-wide-connected"></i><span>Сборка</span>
+        </a>
+      </li>
+      <li>
         <a href="#"><i class="bi bi-grid-3x3"></i><span>Ячейки</span></a>
       </li>
       <li>

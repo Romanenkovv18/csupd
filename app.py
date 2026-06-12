@@ -684,6 +684,339 @@ def stock_export():
     return _xl_send(wb, 'stock')
 
 
+# ── Сборка двигателей ────────────────────────────────────────────────────────
+
+@app.route('/assembly')
+@login_required
+def assembly():
+    db = get_db()
+    is_limited = ROLE_LEVEL.get(session.get('role'), 0) < ROLE_LEVEL['master']
+    if is_limited:
+        base_sql = '''
+            SELECT ea.*,
+                   COUNT(DISTINCT CASE WHEN ah.is_cancelled=0 THEN ah.id END) AS done_count,
+                   (SELECT COUNT(*) FROM assembly_stages
+                    WHERE engine_type = ea.engine_type) AS total_stages
+            FROM engine_assemblies ea
+            LEFT JOIN assembly_history ah ON ah.assembly_id = ea.id
+            WHERE ea.assembler = ?
+            GROUP BY ea.id ORDER BY ea.started_at DESC'''
+        assemblies = db.execute(base_sql, (session['username'],)).fetchall()
+    else:
+        base_sql = '''
+            SELECT ea.*,
+                   COUNT(DISTINCT CASE WHEN ah.is_cancelled=0 THEN ah.id END) AS done_count,
+                   (SELECT COUNT(*) FROM assembly_stages
+                    WHERE engine_type = ea.engine_type) AS total_stages
+            FROM engine_assemblies ea
+            LEFT JOIN assembly_history ah ON ah.assembly_id = ea.id
+            GROUP BY ea.id ORDER BY ea.started_at DESC'''
+        assemblies = db.execute(base_sql).fetchall()
+
+    engine_types = db.execute(
+        'SELECT DISTINCT engine_type FROM assembly_stages ORDER BY engine_type'
+    ).fetchall()
+    db.close()
+    return render_template('assembly.html',
+                           assemblies=assemblies, engine_types=engine_types)
+
+
+@app.route('/assembly/start', methods=['POST'])
+@login_required
+def assembly_start():
+    engine_number = request.form.get('engine_number', '').strip()
+    engine_type   = request.form.get('engine_type', '').strip()
+    if not engine_number or not engine_type:
+        flash('Укажите номер двигателя и тип.', 'danger')
+        return redirect(url_for('assembly'))
+
+    db = get_db()
+    if db.execute('SELECT id FROM engine_assemblies WHERE engine_number=?',
+                  (engine_number,)).fetchone():
+        flash(f'Сборка {engine_number} уже существует.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    if not db.execute('SELECT COUNT(*) FROM assembly_stages WHERE engine_type=?',
+                      (engine_type,)).fetchone()[0]:
+        flash(f'Операции для {engine_type} не настроены.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    cur = db.execute(
+        'INSERT INTO engine_assemblies '
+        '(engine_number, engine_type, current_stage, status, assembler) '
+        'VALUES (?, ?, 1, "В работе", ?)',
+        (engine_number, engine_type, session['username'])
+    )
+    asm_id = cur.lastrowid
+    db.commit()
+    db.close()
+    flash(f'Сборка {engine_number} начата!', 'success')
+    return redirect(url_for('assembly_work', asm_id=asm_id))
+
+
+@app.route('/assembly/<int:asm_id>')
+@login_required
+def assembly_work(asm_id):
+    db = get_db()
+    asm = db.execute('SELECT * FROM engine_assemblies WHERE id=?', (asm_id,)).fetchone()
+    if not asm:
+        flash('Сборка не найдена.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    if asm['status'] == 'Завершена':
+        db.close()
+        return redirect(url_for('assembly_finish', asm_id=asm_id))
+
+    all_stages = db.execute(
+        'SELECT * FROM assembly_stages WHERE engine_type=? ORDER BY stage_number',
+        (asm['engine_type'],)
+    ).fetchall()
+    total_stages = len(all_stages)
+
+    done_ids = {r['stage_id'] for r in db.execute(
+        'SELECT stage_id FROM assembly_history WHERE assembly_id=? AND is_cancelled=0',
+        (asm_id,)
+    ).fetchall()}
+
+    stages = []
+    for s in all_stages:
+        if s['id'] in done_ids:
+            st = 'done'
+        elif s['stage_number'] == asm['current_stage']:
+            st = 'current'
+        else:
+            st = 'pending'
+        stages.append({'stage': s, 'status': st})
+
+    current_stage = next((x['stage'] for x in stages if x['status'] == 'current'), None)
+
+    current_parts = []
+    if current_stage:
+        rows = db.execute('''
+            SELECT sp.quantity AS needed,
+                   p.id, p.name, p.article, p.unit,
+                   p.red_threshold, p.yellow_threshold,
+                   s.quantity AS stock_qty, sc.cell_code
+            FROM stage_parts sp
+            JOIN parts p  ON p.id  = sp.part_id
+            JOIN stock s  ON s.part_id = p.id
+            JOIN storage_cells sc ON sc.id = s.cell_id
+            WHERE sp.stage_id=? ORDER BY p.name
+        ''', (current_stage['id'],)).fetchall()
+
+        for r in rows:
+            if r['stock_qty'] < r['needed']:
+                cs = 'red'
+            elif r['stock_qty'] < r['yellow_threshold']:
+                cs = 'yellow'
+            else:
+                cs = 'green'
+            current_parts.append({
+                'part_id': r['id'], 'name': r['name'],
+                'article': r['article'], 'unit': r['unit'],
+                'needed': r['needed'], 'stock_qty': r['stock_qty'],
+                'cell_code': r['cell_code'], 'card_status': cs,
+                'shortage': r['stock_qty'] < r['needed'],
+            })
+
+    last_history = db.execute('''
+        SELECT ah.id, ah.stage_id, s.stage_name, s.stage_number
+        FROM assembly_history ah
+        JOIN assembly_stages s ON s.id = ah.stage_id
+        WHERE ah.assembly_id=? AND ah.is_cancelled=0
+        ORDER BY ah.completed_at DESC LIMIT 1
+    ''', (asm_id,)).fetchone()
+
+    done_count   = len(done_ids)
+    progress_pct = round(done_count / total_stages * 100) if total_stages else 0
+    has_shortage = any(p['shortage'] for p in current_parts)
+    db.close()
+
+    return render_template('assembly_work.html',
+        asm=asm, stages=stages, current_stage=current_stage,
+        current_parts=current_parts, has_shortage=has_shortage,
+        total_stages=total_stages, done_count=done_count,
+        progress_pct=progress_pct, last_history=last_history)
+
+
+@app.route('/assembly/<int:asm_id>/complete', methods=['POST'])
+@login_required
+def assembly_complete(asm_id):
+    db = get_db()
+    asm = db.execute('SELECT * FROM engine_assemblies WHERE id=?', (asm_id,)).fetchone()
+    if not asm or asm['status'] == 'Завершена':
+        flash('Сборка не найдена или уже завершена.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    stage = db.execute(
+        'SELECT * FROM assembly_stages WHERE engine_type=? AND stage_number=?',
+        (asm['engine_type'], asm['current_stage'])
+    ).fetchone()
+    if not stage:
+        flash('Операция не найдена.', 'danger')
+        db.close()
+        return redirect(url_for('assembly_work', asm_id=asm_id))
+
+    parts = db.execute('''
+        SELECT sp.quantity AS needed, p.id AS part_id, p.name, p.unit,
+               s.id AS stock_id, s.quantity AS stock_qty, s.cell_id
+        FROM stage_parts sp
+        JOIN parts p ON p.id = sp.part_id
+        JOIN stock s ON s.part_id = p.id
+        WHERE sp.stage_id=?
+    ''', (stage['id'],)).fetchall()
+
+    shortages = [p for p in parts if p['stock_qty'] < p['needed']]
+    if shortages:
+        names = ', '.join(
+            f'{p["name"]} (нужно {p["needed"]}, есть {p["stock_qty"]})' for p in shortages
+        )
+        flash(f'Недостаточно деталей: {names}', 'danger')
+        db.close()
+        return redirect(url_for('assembly_work', asm_id=asm_id))
+
+    for p in parts:
+        db.execute(
+            'UPDATE stock SET quantity=quantity-?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+            (p['needed'], p['stock_id'])
+        )
+        db.execute(
+            'INSERT INTO movements (part_id, cell_id, operation_type, quantity, '
+            'engine_number, assembly_stage, operator) VALUES (?,?,?,?,?,?,?)',
+            (p['part_id'], p['cell_id'], 'расход', p['needed'],
+             asm['engine_number'], stage['stage_name'], session['full_name'])
+        )
+
+    db.execute(
+        'INSERT INTO assembly_history (assembly_id, stage_id, assembler) VALUES (?,?,?)',
+        (asm_id, stage['id'], session['username'])
+    )
+
+    total_stages = db.execute(
+        'SELECT COUNT(*) FROM assembly_stages WHERE engine_type=?', (asm['engine_type'],)
+    ).fetchone()[0]
+    next_stage = asm['current_stage'] + 1
+
+    if next_stage > total_stages:
+        db.execute(
+            'UPDATE engine_assemblies SET current_stage=?, status="Завершена", '
+            'completed_at=CURRENT_TIMESTAMP WHERE id=?',
+            (next_stage, asm_id)
+        )
+        db.commit()
+        db.close()
+        flash(f'Сборка {asm["engine_number"]} завершена!', 'success')
+        return redirect(url_for('assembly_finish', asm_id=asm_id))
+    else:
+        db.execute('UPDATE engine_assemblies SET current_stage=? WHERE id=?',
+                   (next_stage, asm_id))
+        db.commit()
+        db.close()
+        flash(f'Операция «{stage["stage_name"]}» выполнена. Переход к {next_stage}-й.', 'success')
+        return redirect(url_for('assembly_work', asm_id=asm_id))
+
+
+@app.route('/assembly/<int:asm_id>/cancel', methods=['POST'])
+@login_required
+def assembly_cancel(asm_id):
+    db = get_db()
+    asm = db.execute('SELECT * FROM engine_assemblies WHERE id=?', (asm_id,)).fetchone()
+    if not asm or asm['status'] == 'Завершена':
+        flash('Нельзя отменить завершённую сборку.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    last = db.execute('''
+        SELECT ah.id, ah.stage_id, s.stage_name, s.stage_number
+        FROM assembly_history ah
+        JOIN assembly_stages s ON s.id = ah.stage_id
+        WHERE ah.assembly_id=? AND ah.is_cancelled=0
+        ORDER BY ah.completed_at DESC LIMIT 1
+    ''', (asm_id,)).fetchone()
+
+    if not last:
+        flash('Нет выполненных операций для отмены.', 'warning')
+        db.close()
+        return redirect(url_for('assembly_work', asm_id=asm_id))
+
+    parts = db.execute('''
+        SELECT sp.quantity AS needed, p.id AS part_id, s.id AS stock_id, s.cell_id
+        FROM stage_parts sp
+        JOIN parts p ON p.id = sp.part_id
+        JOIN stock s ON s.part_id = p.id
+        WHERE sp.stage_id=?
+    ''', (last['stage_id'],)).fetchall()
+
+    for p in parts:
+        db.execute(
+            'UPDATE stock SET quantity=quantity+?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+            (p['needed'], p['stock_id'])
+        )
+        db.execute(
+            'INSERT INTO movements (part_id, cell_id, operation_type, quantity, '
+            'engine_number, assembly_stage, operator, notes) VALUES (?,?,?,?,?,?,?,?)',
+            (p['part_id'], p['cell_id'], 'приход', p['needed'],
+             asm['engine_number'], last['stage_name'], session['full_name'],
+             f'Отмена операции «{last["stage_name"]}»')
+        )
+
+    db.execute('UPDATE assembly_history SET is_cancelled=1 WHERE id=?', (last['id'],))
+    db.execute('UPDATE engine_assemblies SET current_stage=?, status="В работе" WHERE id=?',
+               (last['stage_number'], asm_id))
+    db.commit()
+    db.close()
+    flash(f'Операция «{last["stage_name"]}» отменена. Детали возвращены.', 'warning')
+    return redirect(url_for('assembly_work', asm_id=asm_id))
+
+
+@app.route('/assembly/<int:asm_id>/finish')
+@login_required
+def assembly_finish(asm_id):
+    db = get_db()
+    asm = db.execute('SELECT * FROM engine_assemblies WHERE id=?', (asm_id,)).fetchone()
+    if not asm:
+        flash('Сборка не найдена.', 'danger')
+        db.close()
+        return redirect(url_for('assembly'))
+
+    all_stages = db.execute(
+        'SELECT * FROM assembly_stages WHERE engine_type=? ORDER BY stage_number',
+        (asm['engine_type'],)
+    ).fetchall()
+    total_stages = len(all_stages)
+
+    hist_rows = db.execute('''
+        SELECT ah.stage_id, ah.completed_at, ah.assembler
+        FROM assembly_history ah
+        WHERE ah.assembly_id=? AND ah.is_cancelled=0
+        ORDER BY ah.completed_at
+    ''', (asm_id,)).fetchall()
+    hist_by_sid = {r['stage_id']: r for r in hist_rows}
+    done_ids = set(hist_by_sid.keys())
+
+    stages = []
+    for s in all_stages:
+        if s['id'] in done_ids:
+            st = 'done'
+        elif s['stage_number'] == asm['current_stage']:
+            st = 'current'
+        else:
+            st = 'pending'
+        stages.append({'stage': s, 'status': st, 'history': hist_by_sid.get(s['id'])})
+
+    done_count   = len(done_ids)
+    progress_pct = round(done_count / total_stages * 100) if total_stages else 0
+
+    db.close()
+    return render_template('assembly_finish.html',
+        asm=asm, stages=stages, total_stages=total_stages,
+        done_count=done_count, progress_pct=progress_pct)
+
+
 # ── Запуск ────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':

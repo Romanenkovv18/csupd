@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Сборка двигателей{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Сборка двигателей</h1>
+    <span class="page-sub">ТВ3-117 · участок комплектования</span>
+  </div>
+  <button class="btn btn-action btn-prikhod" data-bs-toggle="modal" data-bs-target="#newAsmModal">
+    <i class="bi bi-plus-circle"></i> Начать сборку
+  </button>
+</div>
+
+{% if assemblies %}
+<div class="row g-3 mb-4">
+  {% for a in assemblies %}
+  {% set pct = ((a.done_count / a.total_stages) * 100) | round | int if a.total_stages else 0 %}
+  <div class="col-xl-4 col-lg-6">
+    <div class="asm-card {{ 'asm-card-done' if a.status == 'Завершена' }}">
+      <div class="asm-card-head">
+        <div class="asm-eng-num">{{ a.engine_number }}</div>
+        <span class="asm-badge {{ 'asm-badge-done' if a.status == 'Завершена' else 'asm-badge-active' }}">
+          {{ a.status }}
+        </span>
+      </div>
+      <div class="asm-card-body">
+        <div class="asm-type-label">{{ a.engine_type }}</div>
+        <div class="asm-progress-info">
+          <span>Операция {{ a.current_stage }} из {{ a.total_stages }}</span>
+          <span class="fw-600">{{ pct }}%</span>
+        </div>
+        <div class="progress asm-progress mb-2">
+          <div class="progress-bar {{ 'bg-success' if a.status == 'Завершена' else 'bg-primary' }}"
+               style="width:{{ pct }}%"></div>
+        </div>
+        <div class="asm-meta-row">
+          <i class="bi bi-calendar3"></i> {{ a.started_at[:10] }}
+          &nbsp;·&nbsp;
+          <i class="bi bi-person"></i> {{ a.assembler }}
+        </div>
+      </div>
+      <div class="asm-card-foot">
+        {% if a.status != 'Завершена' %}
+        <a href="{{ url_for('assembly_work', asm_id=a.id) }}"
+           class="btn btn-primary w-100">
+          <i class="bi bi-play-fill"></i> Продолжить сборку
+        </a>
+        {% else %}
+        <a href="{{ url_for('assembly_finish', asm_id=a.id) }}"
+           class="btn btn-outline-secondary w-100">
+          <i class="bi bi-check-all"></i> Итоги сборки
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="asm-empty">
+  <i class="bi bi-gear-wide-connected"></i>
+  <div>Активных сборок нет</div>
+  <div class="text-muted small mt-1">Нажмите «Начать сборку» чтобы создать новую</div>
+</div>
+{% endif %}
+
+<!-- Модальное окно: новая сборка -->
+<div class="modal fade" id="newAsmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Новая сборка</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('assembly_start') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Тип двигателя <span class="req">*</span></label>
+            <select name="engine_type" class="form-select fc-dark" required>
+              <option value="">— выберите тип —</option>
+              {% for et in engine_types %}
+              <option value="{{ et.engine_type }}">{{ et.engine_type }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Номер двигателя <span class="req">*</span></label>
+            <input type="text" name="engine_number" class="form-control fc-dark"
+                   placeholder="Например: ТВ3-117 №А-2024-010" required>
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-submit-prikhod">
+            <i class="bi bi-play-fill"></i> Начать
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

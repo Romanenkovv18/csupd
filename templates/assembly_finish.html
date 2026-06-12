@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Итоги сборки · {{ asm.engine_number }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Сборка завершена</h1>
+    <span class="page-sub">{{ asm.engine_number }} · {{ asm.engine_type }}</span>
+  </div>
+  <a href="{{ url_for('assembly') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> К списку сборок
+  </a>
+</div>
+
+<!-- ── Итоговый баннер ─────────────────────────────────────────────────────── -->
+<div class="asm-finish-banner">
+  <div class="asm-finish-icon">
+    {% if asm.status == 'Завершена' %}
+    <i class="bi bi-check-circle-fill text-success"></i>
+    {% else %}
+    <i class="bi bi-gear-wide-connected text-primary"></i>
+    {% endif %}
+  </div>
+  <div class="asm-finish-info">
+    <div class="asm-finish-engnum">{{ asm.engine_number }}</div>
+    <div class="asm-finish-type">{{ asm.engine_type }}</div>
+    {% if asm.status == 'Завершена' %}
+    <div class="asm-finish-done-label">Сборка завершена</div>
+    {% else %}
+    <div class="asm-finish-progress-label">В работе · {{ progress_pct }}%</div>
+    {% endif %}
+  </div>
+  <div class="asm-finish-stats">
+    <div class="asm-fstat">
+      <div class="asm-fstat-val">{{ done_count }}</div>
+      <div class="asm-fstat-lbl">операций выполнено</div>
+    </div>
+    <div class="asm-fstat">
+      <div class="asm-fstat-val">{{ total_stages }}</div>
+      <div class="asm-fstat-lbl">всего операций</div>
+    </div>
+    <div class="asm-fstat">
+      <div class="asm-fstat-val">{{ asm.started_at[:10] }}</div>
+      <div class="asm-fstat-lbl">начало сборки</div>
+    </div>
+    {% if asm.completed_at %}
+    <div class="asm-fstat">
+      <div class="asm-fstat-val">{{ asm.completed_at[:10] }}</div>
+      <div class="asm-fstat-lbl">дата завершения</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Прогресс ───────────────────────────────────────────────────────────── -->
+<div class="asm-finish-progress-wrap">
+  <div class="d-flex justify-content-between mb-1">
+    <span class="text-muted small">Прогресс сборки</span>
+    <span class="fw-600">{{ progress_pct }}%</span>
+  </div>
+  <div class="progress asm-finish-progress">
+    <div class="progress-bar {{ 'bg-success' if asm.status == 'Завершена' else 'bg-primary' }}"
+         style="width:{{ progress_pct }}%"></div>
+  </div>
+</div>
+
+<!-- ── Журнал операций ────────────────────────────────────────────────────── -->
+<div class="asm-finish-history">
+  <h6 class="asm-finish-sec-title">Журнал операций</h6>
+  <div class="asm-finish-ops">
+    {% for item in stages %}
+    {% set s = item.stage %}
+    {% set hist = item.history %}
+    <div class="asm-finish-op asm-finish-op-{{ item.status }}">
+      <div class="asm-finish-op-num">{{ s.stage_number }}</div>
+      <div class="asm-finish-op-body">
+        <div class="asm-finish-op-name">{{ s.stage_name }}</div>
+        {% if s.description %}
+        <div class="asm-finish-op-desc">{{ s.description }}</div>
+        {% endif %}
+        {% if hist %}
+        <div class="asm-finish-op-meta">
+          <i class="bi bi-person-fill me-1"></i>{{ hist.assembler }}
+          &nbsp;·&nbsp;
+          <i class="bi bi-calendar3 me-1"></i>{{ hist.completed_at[:10] }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="asm-finish-op-icon">
+        {% if item.status == 'done' %}
+          <i class="bi bi-check-circle-fill text-success"></i>
+        {% elif item.status == 'current' %}
+          <i class="bi bi-arrow-right-circle-fill text-primary"></i>
+        {% else %}
+          <i class="bi bi-circle text-muted"></i>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Действия ───────────────────────────────────────────────────────────── -->
+<div class="asm-finish-actions">
+  {% if asm.status != 'Завершена' %}
+  <a href="{{ url_for('assembly_work', asm_id=asm.id) }}" class="btn btn-primary px-4">
+    <i class="bi bi-play-fill"></i> Продолжить сборку
+  </a>
+  {% endif %}
+  <a href="{{ url_for('assembly') }}" class="btn btn-outline-secondary px-4">
+    <i class="bi bi-list"></i> Все сборки
+  </a>
+</div>
+{% endblock %}
