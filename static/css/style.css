@@ -1730,3 +1730,53 @@ body {
 
 .lh-role { font-size: 0.78rem; color: var(--text-muted); }
 .lh-cred { font-size: 0.78rem; color: var(--accent); font-family: monospace; }
+
+/* Таблица демо-доступа */
+.lh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+.lh-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  text-align: left;
+}
+.lh-table td {
+  padding: 0.2rem 0.5rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.lh-table tr:last-child td { border-bottom: none; }
+.lh-group-header td {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding-top: 0.6rem;
+  padding-bottom: 0.1rem;
+  border-bottom: none;
+}
+.lh-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+.lh-btn:hover { color: #90cdf4; }
+.lh-tip {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.3rem;
+}

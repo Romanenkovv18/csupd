@@ -19,28 +19,36 @@
     </div>
 
     <ul class="sidebar-nav">
+      <!-- Главная — все роли -->
       <li>
         <a href="{{ url_for('dashboard') }}"
            class="{{ 'active' if request.endpoint == 'dashboard' }}">
-          <i class="bi bi-speedometer2"></i><span>Главная</span>
+          <i class="bi bi-house-door"></i><span>Главная</span>
         </a>
       </li>
+
+      <!-- Сборка — все роли -->
+      <li>
+        <a href="{{ url_for('assembly') }}"
+           class="{{ 'active' if request.endpoint in ('assembly','assembly_work','assembly_finish') }}">
+          <i class="bi bi-gear-wide-connected"></i><span>Сборка</span>
+        </a>
+      </li>
+
+      <!-- Остатки, Приход, Расход, Ячейки, Заявки, Журнал — кладовщик и выше -->
+      {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
       <li>
         <a href="{{ url_for('dashboard') }}"
            class="{{ 'active' if request.endpoint == 'dashboard' }}">
           <i class="bi bi-boxes"></i><span>Остатки</span>
         </a>
       </li>
-
-      {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
       <li>
         <a href="{{ url_for('prikhod') }}"
            class="{{ 'active' if request.endpoint == 'prikhod' }}">
           <i class="bi bi-box-arrow-in-down"></i><span>Приход</span>
         </a>
       </li>
-      {% endif %}
-
       <li>
         <a href="{{ url_for('raskhod') }}"
            class="{{ 'active' if request.endpoint == 'raskhod' }}">
@@ -48,18 +56,16 @@
         </a>
       </li>
       <li>
-        <a href="{{ url_for('assembly') }}"
-           class="{{ 'active' if request.endpoint in ('assembly','assembly_work','assembly_finish') }}">
-          <i class="bi bi-gear-wide-connected"></i><span>Сборка</span>
-        </a>
-      </li>
-      <li>
         <a href="#"><i class="bi bi-grid-3x3"></i><span>Ячейки</span></a>
       </li>
+      {% endif %}
+
+      <!-- Детали — все роли -->
       <li>
         <a href="#"><i class="bi bi-card-list"></i><span>Детали</span></a>
       </li>
 
+      <!-- Заявки, Журнал — кладовщик и выше -->
       {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
       <li>
         <a href="{{ url_for('zayavki') }}"
@@ -67,20 +73,27 @@
           <i class="bi bi-clipboard-plus"></i><span>Заявки</span>
         </a>
       </li>
-      {% endif %}
-
       <li>
         <a href="{{ url_for('journal') }}"
            class="{{ 'active' if request.endpoint == 'journal' }}">
           <i class="bi bi-journal-text"></i><span>Журнал операций</span>
         </a>
       </li>
+      {% endif %}
+
+      <!-- Отчёты — мастер и выше -->
+      {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
       <li>
         <a href="#"><i class="bi bi-bar-chart-line"></i><span>Отчёты</span></a>
       </li>
+      {% endif %}
+
+      <!-- Настройки — только admin -->
+      {% if current_user and current_user.level >= ROLE_LEVEL['admin'] %}
       <li>
         <a href="#"><i class="bi bi-gear"></i><span>Настройки</span></a>
       </li>
+      {% endif %}
     </ul>
 
     <!-- Пользователь -->

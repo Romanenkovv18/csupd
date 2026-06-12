@@ -194,10 +194,13 @@ def main():
 
     # Демо-пользователи
     demo_users = [
-        ('sborshik',   '1234',  'Иванов Иван Иванович',        'sborshik'),
-        ('kladovshik', '1234',  'Петрова Мария Сергеевна',     'kladovshik'),
-        ('master',     '1234',  'Сидоров Алексей Николаевич',  'master'),
-        ('admin',      'admin', 'Администратор системы',        'admin'),
+        ('sborshik1',  '1234',  'Иванов Алексей',       'sborshik'),
+        ('sborshik2',  '1234',  'Петров Дмитрий',        'sborshik'),
+        ('sborshik3',  '1234',  'Сидоров Михаил',        'sborshik'),
+        ('sborshik4',  '1234',  'Козлов Андрей',         'sborshik'),
+        ('master',     '1234',  'Фомин Всеволод',        'master'),
+        ('kladovshik', '1234',  'Белоусов Александр',    'kladovshik'),
+        ('admin',      'admin', 'Администратор',          'admin'),
     ]
     for username, password, full_name, role in demo_users:
         conn.execute(
@@ -274,9 +277,9 @@ def main():
 
     # Тестовые сборки на разных этапах
     test_assemblies = [
-        ('ТВ3-117 №А-2024-001', 'ТВ3-117', 1, 'В работе', 'sborshik'),
-        ('ТВ3-117 №А-2024-002', 'ТВ3-117', 3, 'В работе', 'sborshik'),
-        ('ТВ3-117 №А-2024-003', 'ТВ3-117', 7, 'В работе', 'sborshik'),
+        ('ТВ3-117 №А-2024-001', 'ТВ3-117', 1, 'В работе', 'sborshik1'),
+        ('ТВ3-117 №А-2024-002', 'ТВ3-117', 3, 'В работе', 'sborshik2'),
+        ('ТВ3-117 №А-2024-003', 'ТВ3-117', 7, 'В работе', 'sborshik3'),
     ]
     for eng_num, eng_type, cur_stage, status, assembler in test_assemblies:
         conn.execute(
@@ -303,7 +306,7 @@ def main():
             conn.execute(
                 "INSERT INTO assembly_history (assembly_id, stage_id, assembler, completed_at) "
                 "VALUES (?, ?, ?, datetime('now', ?))",
-                (asm_id, sid, 'sborshik', f'-{7 - sn} days'),
+                (asm_id, sid, 'sborshik1', f'-{7 - sn} days'),
             )
 
     conn.commit()
@@ -315,8 +318,8 @@ def main():
     print(f"  [YELLOW] Жёлтых   : {yellow_count}")
     print(f"  [GREEN]  Зелёных  : {green_count}")
     print(f"\nПользователи:")
-    for u, p, _, r in demo_users:
-        print(f"  {u} / {p}  ({r})")
+    for u, p, name, r in demo_users:
+        print(f"  {u} / {p}  — {name} ({r})")
 
 
 if __name__ == '__main__':

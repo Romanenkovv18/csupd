@@ -76,12 +76,51 @@
   <!-- Подсказка по логинам -->
   <div class="login-hint">
     <div class="login-hint-title">Демо-доступ</div>
-    <div class="login-hint-grid">
-      <span class="lh-role">Сборщик</span>      <span class="lh-cred">sborshik / 1234</span>
-      <span class="lh-role">Кладовщик</span>    <span class="lh-cred">kladovshik / 1234</span>
-      <span class="lh-role">Мастер</span>        <span class="lh-cred">master / 1234</span>
-      <span class="lh-role">Администратор</span> <span class="lh-cred">admin / admin</span>
-    </div>
+    <table class="lh-table">
+      <thead>
+        <tr><th>Роль</th><th>Логин</th><th>Пароль</th></tr>
+      </thead>
+      <tbody>
+        <tr class="lh-group-header"><td colspan="3">Сборщики</td></tr>
+        <tr>
+          <td>Сборщик</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('sborshik1','1234')">sborshik1</button></td>
+          <td>1234</td>
+        </tr>
+        <tr>
+          <td>Сборщик</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('sborshik2','1234')">sborshik2</button></td>
+          <td>1234</td>
+        </tr>
+        <tr>
+          <td>Сборщик</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('sborshik3','1234')">sborshik3</button></td>
+          <td>1234</td>
+        </tr>
+        <tr>
+          <td>Сборщик</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('sborshik4','1234')">sborshik4</button></td>
+          <td>1234</td>
+        </tr>
+        <tr class="lh-group-header"><td colspan="3">Остальные</td></tr>
+        <tr>
+          <td>Мастер</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('master','1234')">master</button></td>
+          <td>1234</td>
+        </tr>
+        <tr>
+          <td>Кладовщик</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('kladovshik','1234')">kladovshik</button></td>
+          <td>1234</td>
+        </tr>
+        <tr>
+          <td>Администратор</td>
+          <td><button type="button" class="lh-btn" onclick="fillLogin('admin','admin')">admin</button></td>
+          <td>admin</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="lh-tip">Нажмите на логин — он заполнится автоматически</div>
   </div>
 
 </div>
@@ -97,6 +136,10 @@ function togglePwd() {
     inp.type = 'password';
     eye.className = 'bi bi-eye';
   }
+}
+function fillLogin(user, pass) {
+  document.querySelector('input[name="username"]').value = user;
+  document.getElementById('password').value = pass;
 }
 </script>
 </body>
