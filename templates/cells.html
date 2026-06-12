@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Ячейки хранения{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Ячейки хранения</h1>
+    <span class="page-sub">{{ stats.total }} ячеек · адресное хранение</span>
+  </div>
+</div>
+
+<!-- ── Сводные карточки ──────────────────────────────────────────────────────── -->
+<div class="cells-stats mb-3">
+  <div class="cstat cstat-all">
+    <div class="cstat-val">{{ stats.total }}</div>
+    <div class="cstat-lbl">Всего</div>
+  </div>
+  <div class="cstat cstat-green">
+    <div class="cstat-val">{{ stats.green }}</div>
+    <div class="cstat-lbl">Норма</div>
+  </div>
+  <div class="cstat cstat-yellow">
+    <div class="cstat-val">{{ stats.yellow }}</div>
+    <div class="cstat-lbl">Внимание</div>
+  </div>
+  <div class="cstat cstat-red">
+    <div class="cstat-val">{{ stats.red }}</div>
+    <div class="cstat-lbl">Критично</div>
+  </div>
+  <div class="cstat cstat-empty">
+    <div class="cstat-val">{{ stats.empty }}</div>
+    <div class="cstat-lbl">Пусто</div>
+  </div>
+</div>
+
+<!-- ── Поиск ────────────────────────────────────────────────────────────────── -->
+<form method="get" action="{{ url_for('cells') }}" class="det-filters mb-4">
+  <div class="det-search-wrap">
+    <i class="bi bi-search det-search-icon"></i>
+    <input type="text" name="q" value="{{ q }}"
+           class="form-control fc-dark det-search"
+           placeholder="Поиск по коду ячейки, артикулу или наименованию…">
+    {% if q %}
+    <a href="{{ url_for('cells') }}" class="det-search-clear" title="Сбросить">
+      <i class="bi bi-x-lg"></i>
+    </a>
+    {% endif %}
+  </div>
+  <button type="submit" class="btn btn-primary det-search-btn">
+    <i class="bi bi-funnel"></i> Найти
+  </button>
+</form>
+
+{% if not q %}
+<!-- ── Визуальная схема стеллажей ──────────────────────────────────────────── -->
+<div class="cells-scheme-wrap mb-4">
+  <div class="cells-scheme-title">
+    <i class="bi bi-grid-3x3 me-2"></i>Схема стеллажей
+  </div>
+  <div class="cells-scheme">
+    {% for shelf in shelves %}
+    <div class="shelf-card">
+      <div class="shelf-label">{{ shelf }}</div>
+      <div class="shelf-grid">
+        {% for level in all_levels %}
+        {% set level_cells = grid[shelf].get(level, []) %}
+        <div class="shelf-row">
+          <div class="shelf-level-label">{{ level }}</div>
+          {% for c in level_cells %}
+          <div class="shelf-cell shelf-cell-{{ c.status }}"
+               data-bs-toggle="tooltip"
+               title="{{ c.cell_code }}{% if c.part_name %} · {{ c.part_name }} ({{ c.quantity }} {{ c.unit }}){% endif %}">
+            <div class="shelf-cell-code">{{ c.cell_number }}</div>
+            {% if c.quantity > 0 %}
+            <div class="shelf-cell-qty">{{ c.quantity }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% if level_cells | length == 0 %}
+          <div class="shelf-cell shelf-cell-empty shelf-cell-placeholder">—</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Легенда схемы -->
+  <div class="cells-legend">
+    <span class="shelf-cell shelf-cell-green shelf-cell-mini"></span> Норма
+    <span class="shelf-cell shelf-cell-yellow shelf-cell-mini"></span> Внимание
+    <span class="shelf-cell shelf-cell-red shelf-cell-mini"></span> Критично
+    <span class="shelf-cell shelf-cell-empty shelf-cell-mini"></span> Пусто
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Таблица ячеек ────────────────────────────────────────────────────────── -->
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th style="width:2rem"></th>
+        <th>Ячейка</th>
+        <th>Стеллаж</th>
+        <th>Полка</th>
+        <th>Деталь</th>
+        <th>Артикул</th>
+        <th class="text-end">Остаток</th>
+        <th>Ед.</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cells %}
+      <tr class="det-row">
+        <td><span class="tl-dot tl-{{ c.status }}"></span></td>
+        <td><span class="det-cell">{{ c.cell_code }}</span></td>
+        <td class="text-muted">{{ c.shelf_number }}</td>
+        <td class="text-muted">{{ c.level_number }}</td>
+        <td class="det-name">{{ c.part_name or '—' }}</td>
+        <td class="det-article">{{ c.article or '—' }}</td>
+        <td class="text-end">
+          {% if c.part_id %}
+          <span class="det-qty det-qty-{{ c.status }}">{{ c.quantity }}</span>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="text-muted">{{ c.unit or '—' }}</td>
+        <td>
+          {% if c.status == 'red' %}
+            <span class="det-status-badge det-status-red">Критично</span>
+          {% elif c.status == 'yellow' %}
+            <span class="det-status-badge det-status-yellow">Внимание</span>
+          {% elif c.status == 'green' %}
+            <span class="det-status-badge det-status-green">Норма</span>
+          {% else %}
+            <span class="text-muted small">Свободна</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" class="text-center text-muted py-4">
+          <i class="bi bi-search me-2"></i>Ничего не найдено
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Bootstrap tooltips для схемы
+const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+tooltipEls.forEach(el => new bootstrap.Tooltip(el, {trigger: 'hover'}));
+</script>
+{% endblock %}

@@ -1920,3 +1920,159 @@ body {
   align-items: center;
   gap: 0.25rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ЯЧЕЙКИ ХРАНЕНИЯ (/cells)
+═══════════════════════════════════════════════════════════════ */
+
+/* Сводные карточки */
+.cells-stats {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.cstat {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.7rem 1.2rem;
+  min-width: 90px;
+  text-align: center;
+}
+.cstat-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.cstat-lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+.cstat-all    .cstat-val { color: var(--text-primary); }
+.cstat-green  .cstat-val { color: #68d391; }
+.cstat-yellow .cstat-val { color: #f6c90e; }
+.cstat-red    .cstat-val { color: #fc8181; }
+.cstat-empty  .cstat-val { color: var(--text-muted); }
+
+/* Схема стеллажей */
+.cells-scheme-wrap {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+.cells-scheme-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.cells-scheme {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Один стеллаж */
+.shelf-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+.shelf-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+.shelf-grid { display: flex; flex-direction: column; gap: 0.3rem; }
+.shelf-row  { display: flex; align-items: center; gap: 0.3rem; }
+.shelf-level-label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  width: 1.6rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Ячейка в схеме */
+.shelf-cell {
+  width: 48px;
+  height: 44px;
+  border-radius: 6px;
+  border: 1.5px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: transform 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+.shelf-cell:hover {
+  transform: scale(1.08);
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.shelf-cell-code {
+  font-size: 0.6rem;
+  font-weight: 700;
+  opacity: 0.7;
+  line-height: 1;
+}
+.shelf-cell-qty {
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.shelf-cell-green {
+  background: rgba(72,187,120,0.12);
+  border-color: rgba(72,187,120,0.4);
+  color: #68d391;
+}
+.shelf-cell-yellow {
+  background: rgba(246,201,14,0.10);
+  border-color: rgba(246,201,14,0.4);
+  color: #f6c90e;
+}
+.shelf-cell-red {
+  background: rgba(245,101,101,0.12);
+  border-color: rgba(245,101,101,0.45);
+  color: #fc8181;
+}
+.shelf-cell-empty {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+.shelf-cell-placeholder { opacity: 0.2; cursor: default; }
+
+/* Мини-ячейка для легенды */
+.shelf-cell-mini {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid;
+  vertical-align: middle;
+  margin-right: 0.15rem;
+}
+
+/* Легенда схемы */
+.cells-legend {
+  margin-top: 0.9rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}

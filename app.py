@@ -1017,6 +1017,71 @@ def assembly_finish(asm_id):
         done_count=done_count, progress_pct=progress_pct)
 
 
+# ── Ячейки хранения ───────────────────────────────────────────────────────────
+
+@app.route('/cells')
+@login_required
+def cells():
+    db  = get_db()
+    q   = request.args.get('q', '').strip()
+
+    sql = '''
+        SELECT sc.id, sc.cell_code, sc.shelf_number, sc.level_number, sc.cell_number,
+               p.id AS part_id, p.name AS part_name, p.article,
+               p.red_threshold, p.yellow_threshold, p.unit,
+               COALESCE(s.quantity, 0) AS quantity
+        FROM storage_cells sc
+        LEFT JOIN stock s  ON s.cell_id  = sc.id
+        LEFT JOIN parts p  ON p.id = s.part_id
+        WHERE 1=1
+    '''
+    params = []
+    if q:
+        sql += " AND (sc.cell_code LIKE ? OR p.name LIKE ? OR p.article LIKE ?)"
+        params += [f'%{q}%', f'%{q}%', f'%{q}%']
+    sql += " ORDER BY sc.shelf_number, sc.level_number, sc.cell_number"
+
+    rows = db.execute(sql, params).fetchall()
+    db.close()
+
+    def cell_status(r):
+        if not r['part_id']:
+            return 'empty'
+        qty, red, yel = r['quantity'], r['red_threshold'] or 0, r['yellow_threshold'] or 0
+        if qty < red:
+            return 'red'
+        if qty < yel:
+            return 'yellow'
+        return 'green'
+
+    cells_list = []
+    for r in rows:
+        cells_list.append({**dict(r), 'status': cell_status(r)})
+
+    # Группировка для схемы: {shelf: {level: [cell, ...]}}
+    grid = {}
+    for c in cells_list:
+        sh = c['shelf_number']
+        lv = c['level_number']
+        grid.setdefault(sh, {}).setdefault(lv, []).append(c)
+
+    shelves     = sorted(grid.keys())
+    all_levels  = sorted({lv for sh in grid.values() for lv in sh})
+
+    stats = {
+        'total': len(cells_list),
+        'empty':  sum(1 for c in cells_list if c['status'] == 'empty'),
+        'red':    sum(1 for c in cells_list if c['status'] == 'red'),
+        'yellow': sum(1 for c in cells_list if c['status'] == 'yellow'),
+        'green':  sum(1 for c in cells_list if c['status'] == 'green'),
+    }
+
+    return render_template('cells.html',
+                           cells=cells_list, q=q,
+                           grid=grid, shelves=shelves, all_levels=all_levels,
+                           stats=stats)
+
+
 # ── Справочник деталей ────────────────────────────────────────────────────────
 
 @app.route('/details')

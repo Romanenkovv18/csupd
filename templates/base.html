@@ -56,7 +56,10 @@
         </a>
       </li>
       <li>
-        <a href="#"><i class="bi bi-grid-3x3"></i><span>Ячейки</span></a>
+        <a href="{{ url_for('cells') }}"
+           class="{{ 'active' if request.endpoint == 'cells' }}">
+          <i class="bi bi-grid-3x3"></i><span>Ячейки</span>
+        </a>
       </li>
       {% endif %}
 
