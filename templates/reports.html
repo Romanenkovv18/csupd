@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}Отчёты{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Отчёты</h1>
+    <span class="page-sub">Аналитика · ТВ3-117</span>
+  </div>
+</div>
+
+<!-- ── Вкладки ──────────────────────────────────────────────────────────────── -->
+<ul class="nav rep-tabs mb-4">
+  <li class="nav-item">
+    <a class="rep-tab {{ 'active' if tab == 'spending' }}"
+       href="{{ url_for('reports', tab='spending') }}">
+      <i class="bi bi-graph-down-arrow"></i> Расход за период
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="rep-tab {{ 'active' if tab == 'assemblies' }}"
+       href="{{ url_for('reports', tab='assemblies') }}">
+      <i class="bi bi-gear-wide-connected"></i> Сборки
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="rep-tab {{ 'active' if tab == 'deficit' }}"
+       href="{{ url_for('reports', tab='deficit') }}">
+      <i class="bi bi-exclamation-triangle"></i> Дефицит
+      {% if zone_counts.red_cnt %}
+      <span class="rep-tab-badge">{{ zone_counts.red_cnt }}</span>
+      {% endif %}
+    </a>
+  </li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ВКЛАДКА 1: РАСХОД ЗА ПЕРИОД
+══════════════════════════════════════════════════════════════════ -->
+{% if tab == 'spending' %}
+
+<!-- Фильтры -->
+<form method="get" action="{{ url_for('reports') }}" class="rep-filters mb-3">
+  <input type="hidden" name="tab" value="spending">
+  <div class="rep-filter-row">
+    <div class="rep-filter-group">
+      <label class="rep-filter-label">С</label>
+      <input type="date" name="date_from" value="{{ date_from }}"
+             class="form-control fc-dark rep-date-input">
+    </div>
+    <div class="rep-filter-group">
+      <label class="rep-filter-label">По</label>
+      <input type="date" name="date_to" value="{{ date_to }}"
+             class="form-control fc-dark rep-date-input">
+    </div>
+    <div class="rep-filter-group rep-filter-grow">
+      <label class="rep-filter-label">Деталь</label>
+      <select name="part_id" class="form-select fc-dark">
+        <option value="">— все детали —</option>
+        {% for p in all_parts %}
+        <option value="{{ p.id }}" {{ 'selected' if part_id == p.id|string }}>
+          {{ p.article }} · {{ p.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="rep-filter-group">
+      <label class="rep-filter-label">Двигатель</label>
+      <input type="text" name="engine_q" value="{{ engine_q }}"
+             class="form-control fc-dark" placeholder="номер…" style="width:140px">
+    </div>
+    <button type="submit" class="btn btn-primary align-self-end">
+      <i class="bi bi-funnel"></i> Применить
+    </button>
+  </div>
+</form>
+
+<!-- Сводка -->
+<div class="rep-summary mb-3">
+  <div class="rep-sum-card">
+    <div class="rep-sum-val">{{ spend_total }}</div>
+    <div class="rep-sum-lbl">деталей списано</div>
+  </div>
+  <div class="rep-sum-card">
+    <div class="rep-sum-val">{{ spend_detail | length }}</div>
+    <div class="rep-sum-lbl">операций расхода</div>
+  </div>
+  <div class="rep-sum-card">
+    <div class="rep-sum-val">{{ spend_days_json | from_json | length }}</div>
+    <div class="rep-sum-lbl">дней с операциями</div>
+  </div>
+</div>
+
+<!-- График -->
+<div class="rep-chart-wrap mb-4">
+  {% if spend_vals_json != '[]' %}
+  <canvas id="spendChart" height="90"></canvas>
+  {% else %}
+  <div class="rep-empty">
+    <i class="bi bi-bar-chart"></i>
+    <div>Нет данных за выбранный период</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Детальная таблица -->
+{% if spend_detail %}
+<div class="rep-section-title">Операции расхода</div>
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th>Дата и время</th>
+        <th>Деталь</th>
+        <th>Артикул</th>
+        <th class="text-end">Кол-во</th>
+        <th>Двигатель</th>
+        <th>Этап</th>
+        <th>Оператор</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in spend_detail %}
+      <tr class="det-row">
+        <td class="text-muted" style="white-space:nowrap">{{ r.created_at[:16] }}</td>
+        <td class="det-name">{{ r.part_name }}</td>
+        <td class="det-article">{{ r.article }}</td>
+        <td class="text-end fw-600">{{ r.quantity }}</td>
+        <td class="text-muted">{{ r.engine_number or '—' }}</td>
+        <td class="text-muted">{{ r.assembly_stage or '—' }}</td>
+        <td class="text-muted">{{ r.operator or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endif %}
+<!-- /вкладка расход -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ВКЛАДКА 2: СБОРКИ
+══════════════════════════════════════════════════════════════════ -->
+{% if tab == 'assemblies' %}
+
+<!-- Сводка по сборкам -->
+{% set active_cnt   = asm_list | selectattr('status', 'ne', 'Завершена') | list | length %}
+{% set done_cnt     = asm_list | selectattr('status', 'eq', 'Завершена') | list | length %}
+<div class="rep-summary mb-3">
+  <div class="rep-sum-card">
+    <div class="rep-sum-val">{{ asm_list | length }}</div>
+    <div class="rep-sum-lbl">всего сборок</div>
+  </div>
+  <div class="rep-sum-card rep-sum-active">
+    <div class="rep-sum-val">{{ active_cnt }}</div>
+    <div class="rep-sum-lbl">в работе</div>
+  </div>
+  <div class="rep-sum-card rep-sum-done">
+    <div class="rep-sum-val">{{ done_cnt }}</div>
+    <div class="rep-sum-lbl">завершено</div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th>Двигатель</th>
+        <th>Тип</th>
+        <th>Сборщик</th>
+        <th>Начало</th>
+        <th>Завершение</th>
+        <th>Прогресс</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in asm_list %}
+      <tr class="det-row">
+        <td class="det-name">{{ a.engine_number }}</td>
+        <td class="text-muted">{{ a.engine_type }}</td>
+        <td>{{ a.assembler }}</td>
+        <td class="text-muted" style="white-space:nowrap">{{ a.started_at[:10] }}</td>
+        <td class="text-muted" style="white-space:nowrap">
+          {{ a.completed_at[:10] if a.completed_at else '—' }}
+        </td>
+        <td style="min-width:120px">
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress flex-grow-1" style="height:5px;background:rgba(255,255,255,0.07)">
+              <div class="progress-bar {{ 'bg-success' if a.status == 'Завершена' else 'bg-primary' }}"
+                   style="width:{{ a.pct }}%"></div>
+            </div>
+            <span class="text-muted" style="font-size:0.75rem;white-space:nowrap">
+              {{ a.done_count }}/{{ a.total_stages }}
+            </span>
+          </div>
+        </td>
+        <td>
+          {% if a.status == 'Завершена' %}
+          <span class="det-status-badge det-status-green">Завершена</span>
+          {% else %}
+          <span class="det-status-badge" style="background:rgba(99,179,237,0.12);color:#63b3ed">В работе</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('assembly_finish', asm_id=a.id) }}"
+             class="btn det-edit-btn" title="Подробнее">
+            <i class="bi bi-arrow-right"></i>
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center text-muted py-4">Сборок нет</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+<!-- /вкладка сборки -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ВКЛАДКА 3: ДЕФИЦИТ
+══════════════════════════════════════════════════════════════════ -->
+{% if tab == 'deficit' %}
+
+<!-- Зоны светофора -->
+<div class="rep-summary mb-3">
+  <div class="rep-sum-card rep-sum-red">
+    <div class="rep-sum-val">{{ zone_counts.red_cnt or 0 }}</div>
+    <div class="rep-sum-lbl">критичных</div>
+  </div>
+  <div class="rep-sum-card rep-sum-yellow">
+    <div class="rep-sum-val">{{ zone_counts.yellow_cnt or 0 }}</div>
+    <div class="rep-sum-lbl">внимание</div>
+  </div>
+  <div class="rep-sum-card rep-sum-done">
+    <div class="rep-sum-val">{{ zone_counts.green_cnt or 0 }}</div>
+    <div class="rep-sum-lbl">в норме</div>
+  </div>
+</div>
+
+{% if deficit %}
+<div class="rep-section-title">Позиции в критической зоне</div>
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th style="width:2rem"></th>
+        <th>Артикул</th>
+        <th>Наименование</th>
+        <th>Ячейка</th>
+        <th class="text-end">Остаток</th>
+        <th class="text-end">Красный порог</th>
+        <th class="text-end">Дефицит</th>
+        <th class="text-end">План/мес</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in deficit %}
+      {% set shortage = d.red_threshold - d.stock_qty %}
+      <tr class="det-row">
+        <td><span class="tl-dot tl-red"></span></td>
+        <td class="det-article">{{ d.article }}</td>
+        <td class="det-name">{{ d.name }}</td>
+        <td><span class="det-cell">{{ d.cell_code or '—' }}</span></td>
+        <td class="text-end">
+          <span class="det-qty det-qty-red">{{ d.stock_qty }}</span>
+        </td>
+        <td class="text-end text-muted">{{ d.red_threshold }}</td>
+        <td class="text-end">
+          <span class="rep-shortage-badge">−{{ shortage }}</span>
+        </td>
+        <td class="text-end text-muted">{{ d.monthly_plan }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="rep-empty">
+  <i class="bi bi-check-circle text-success"></i>
+  <div>Критических позиций нет</div>
+  <div class="text-muted small">Все остатки выше красного порога</div>
+</div>
+{% endif %}
+
+{% endif %}
+<!-- /вкладка дефицит -->
+
+{% endblock %}
+
+{% block scripts %}
+{% if tab == 'spending' and spend_vals_json != '[]' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const days = {{ spend_days_json | safe }};
+const vals = {{ spend_vals_json | safe }};
+
+new Chart(document.getElementById('spendChart'), {
+  type: 'bar',
+  data: {
+    labels: days,
+    datasets: [{
+      label: 'Списано деталей',
+      data: vals,
+      backgroundColor: 'rgba(99,179,237,0.35)',
+      borderColor:     'rgba(99,179,237,0.85)',
+      borderWidth: 1.5,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.parsed.y} шт.`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#a0aec0', font: { size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#a0aec0', font: { size: 11 }, precision: 0 },
+        beginAtZero: true
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

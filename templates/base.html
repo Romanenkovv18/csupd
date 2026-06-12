@@ -90,7 +90,10 @@
       <!-- Отчёты — мастер и выше -->
       {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
       <li>
-        <a href="#"><i class="bi bi-bar-chart-line"></i><span>Отчёты</span></a>
+        <a href="{{ url_for('reports') }}"
+           class="{{ 'active' if request.endpoint == 'reports' }}">
+          <i class="bi bi-bar-chart-line"></i><span>Отчёты</span>
+        </a>
       </li>
       {% endif %}
 

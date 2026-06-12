@@ -2076,3 +2076,137 @@ body {
   gap: 0.6rem;
   flex-wrap: wrap;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ОТЧЁТЫ (/reports)
+═══════════════════════════════════════════════════════════════ */
+
+/* Вкладки */
+.rep-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rep-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  position: relative;
+}
+.rep-tab:hover { color: var(--text-primary); }
+.rep-tab.active {
+  color: #63b3ed;
+  border-bottom-color: #63b3ed;
+}
+.rep-tab-badge {
+  background: rgba(245,101,101,0.2);
+  color: #fc8181;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.45rem;
+}
+
+/* Фильтры */
+.rep-filters { }
+.rep-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.rep-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.rep-filter-group.rep-filter-grow { flex: 1; min-width: 200px; }
+.rep-filter-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rep-date-input { width: 140px; }
+
+/* Сводные карточки */
+.rep-summary {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.rep-sum-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.75rem 1.3rem;
+  min-width: 100px;
+  text-align: center;
+}
+.rep-sum-val {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+.rep-sum-lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+.rep-sum-active .rep-sum-val { color: #63b3ed; }
+.rep-sum-done   .rep-sum-val { color: #68d391; }
+.rep-sum-red    .rep-sum-val { color: #fc8181; }
+.rep-sum-yellow .rep-sum-val { color: #f6c90e; }
+
+/* График */
+.rep-chart-wrap {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 1.2rem 1.4rem;
+}
+
+/* Пустое состояние */
+.rep-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+.rep-empty i {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.75rem;
+  opacity: 0.35;
+}
+
+/* Заголовок секции */
+.rep-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* Бейдж дефицита */
+.rep-shortage-badge {
+  background: rgba(245,101,101,0.15);
+  color: #fc8181;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}

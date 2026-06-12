@@ -14,8 +14,11 @@ from werkzeug.security import check_password_hash
 
 from db import get_db
 
+import json as _json
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'csupd-dev-secret-2024')
+app.jinja_env.filters['from_json'] = _json.loads
 
 # ── Константы ────────────────────────────────────────────────────────────────
 
@@ -1015,6 +1018,131 @@ def assembly_finish(asm_id):
     return render_template('assembly_finish.html',
         asm=asm, stages=stages, total_stages=total_stages,
         done_count=done_count, progress_pct=progress_pct)
+
+
+# ── Отчёты ────────────────────────────────────────────────────────────────────
+
+@app.route('/reports')
+@login_required
+def reports():
+    if ROLE_LEVEL.get(session.get('role'), 0) < ROLE_LEVEL['master']:
+        flash('Недостаточно прав для просмотра отчётов.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    db  = get_db()
+    tab = request.args.get('tab', 'spending')
+
+    # ── Вкладка 1: Расход за период ──────────────────────────────────────────
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to',   '')
+    part_id   = request.args.get('part_id',   '', type=str)
+    engine_q  = request.args.get('engine_q',  '').strip()
+
+    if not date_from:
+        date_from = db.execute("SELECT date('now', '-29 days')").fetchone()[0]
+    if not date_to:
+        date_to = db.execute("SELECT date('now')").fetchone()[0]
+
+    spend_sql = """
+        SELECT date(m.created_at) AS day,
+               SUM(m.quantity)    AS total_qty,
+               COUNT(*)           AS ops
+        FROM movements m
+        WHERE m.operation_type = 'расход'
+          AND date(m.created_at) BETWEEN ? AND ?
+    """
+    spend_params = [date_from, date_to]
+    if part_id:
+        spend_sql   += " AND m.part_id = ?"
+        spend_params.append(int(part_id))
+    if engine_q:
+        spend_sql   += " AND m.engine_number LIKE ?"
+        spend_params.append(f'%{engine_q}%')
+    spend_sql += " GROUP BY day ORDER BY day"
+
+    spend_rows = db.execute(spend_sql, spend_params).fetchall()
+    spend_days = [r['day']       for r in spend_rows]
+    spend_vals = [r['total_qty'] for r in spend_rows]
+
+    # Детальная таблица расхода
+    detail_sql = """
+        SELECT m.created_at, p.name AS part_name, p.article,
+               m.quantity, m.engine_number, m.assembly_stage, m.operator
+        FROM movements m
+        JOIN parts p ON p.id = m.part_id
+        WHERE m.operation_type = 'расход'
+          AND date(m.created_at) BETWEEN ? AND ?
+    """
+    detail_params = [date_from, date_to]
+    if part_id:
+        detail_sql   += " AND m.part_id = ?"
+        detail_params.append(int(part_id))
+    if engine_q:
+        detail_sql   += " AND m.engine_number LIKE ?"
+        detail_params.append(f'%{engine_q}%')
+    detail_sql += " ORDER BY m.created_at DESC LIMIT 200"
+    spend_detail = db.execute(detail_sql, detail_params).fetchall()
+
+    all_parts = db.execute(
+        "SELECT id, name, article FROM parts ORDER BY name"
+    ).fetchall()
+
+    # ── Вкладка 2: Сборки ────────────────────────────────────────────────────
+    assemblies = db.execute("""
+        SELECT ea.id, ea.engine_number, ea.engine_type,
+               ea.current_stage, ea.status, ea.assembler,
+               ea.started_at, ea.completed_at,
+               (SELECT COUNT(*) FROM assembly_stages WHERE engine_type=ea.engine_type) AS total_stages,
+               (SELECT COUNT(*) FROM assembly_history ah
+                WHERE ah.assembly_id=ea.id AND ah.is_cancelled=0) AS done_count
+        FROM engine_assemblies ea
+        ORDER BY ea.started_at DESC
+    """).fetchall()
+
+    asm_list = []
+    for a in assemblies:
+        pct = round(a['done_count'] / a['total_stages'] * 100) if a['total_stages'] else 0
+        asm_list.append({**dict(a), 'pct': pct})
+
+    # ── Вкладка 3: Дефицит ───────────────────────────────────────────────────
+    deficit = db.execute("""
+        SELECT p.id, p.article, p.name, p.engine_type, p.unit,
+               p.red_threshold, p.yellow_threshold, p.monthly_plan,
+               COALESCE(s.quantity, 0) AS stock_qty,
+               sc.cell_code
+        FROM parts p
+        LEFT JOIN stock s  ON s.part_id = p.id
+        LEFT JOIN storage_cells sc ON sc.id = s.cell_id
+        WHERE COALESCE(s.quantity, 0) < COALESCE(p.red_threshold, 0)
+        ORDER BY (p.red_threshold - COALESCE(s.quantity, 0)) DESC
+    """).fetchall()
+
+    # Кол-во позиций по зонам
+    zone_counts = db.execute("""
+        SELECT
+            SUM(CASE WHEN COALESCE(s.quantity,0) < COALESCE(p.red_threshold,0)    THEN 1 ELSE 0 END) AS red_cnt,
+            SUM(CASE WHEN COALESCE(s.quantity,0) >= COALESCE(p.red_threshold,0)
+                      AND COALESCE(s.quantity,0) < COALESCE(p.yellow_threshold,0) THEN 1 ELSE 0 END) AS yellow_cnt,
+            SUM(CASE WHEN COALESCE(s.quantity,0) >= COALESCE(p.yellow_threshold,0) THEN 1 ELSE 0 END) AS green_cnt
+        FROM parts p LEFT JOIN stock s ON s.part_id = p.id
+    """).fetchone()
+
+    db.close()
+
+    import json
+    return render_template('reports.html',
+        tab=tab,
+        date_from=date_from, date_to=date_to,
+        part_id=part_id, engine_q=engine_q,
+        spend_days_json=json.dumps(spend_days, ensure_ascii=False),
+        spend_vals_json=json.dumps(spend_vals),
+        spend_detail=spend_detail,
+        spend_total=sum(spend_vals),
+        all_parts=all_parts,
+        asm_list=asm_list,
+        deficit=deficit,
+        zone_counts=zone_counts,
+    )
 
 
 # ── Ячейки хранения ───────────────────────────────────────────────────────────
