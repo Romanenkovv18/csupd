@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Приход деталей{% endblock %}
+
+{% block content %}
+
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Фиксация прихода</h1>
+    <span class="page-sub">Постановка деталей на учёт</span>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> На дашборд
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Форма -->
+  <div class="col-lg-8">
+    <form method="post" id="prikhod-form" novalidate>
+
+      <!-- 1. Деталь -->
+      <div class="form-card mb-3">
+        <div class="form-section-title">
+          <span class="step-badge step-badge-green">1</span> Деталь
+        </div>
+        <label class="form-label">Поиск по артикулу или наименованию</label>
+        <div class="search-wrap mb-2">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text" id="part-search"
+                 class="form-control fc-dark"
+                 placeholder="Начните вводить артикул или название...">
+        </div>
+        <select name="part_id" id="part_id"
+                class="form-select fc-dark part-select"
+                size="7" required>
+          {% for p in parts %}
+          <option value="{{ p.id }}"
+                  data-qty="{{ p.quantity }}"
+                  data-unit="{{ p.unit }}"
+                  data-name="{{ p.name }}"
+                  data-article="{{ p.article }}"
+                  data-cell-id="{{ p.cell_id }}"
+                  data-cell-code="{{ p.cell_code }}"
+                  {{ 'selected' if form and form.part_id == p.id|string else '' }}>
+            {{ p.article }} — {{ p.name }} ({{ p.quantity }} {{ p.unit }}, {{ p.cell_code }})
+          </option>
+          {% endfor %}
+        </select>
+        <div id="part-stock-hint" class="form-hint mt-1">Выберите деталь из списка</div>
+      </div>
+
+      <!-- 2. Количество, ячейка, исполнитель -->
+      <div class="form-card mb-3">
+        <div class="form-section-title">
+          <span class="step-badge step-badge-green">2</span> Количество, ячейка и исполнитель
+        </div>
+        <div class="row g-3 mt-0">
+
+          <div class="col-sm-4">
+            <label class="form-label">Количество <span class="req">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" id="quantity"
+                     class="form-control fc-dark"
+                     min="1" value="{{ form.quantity if form else 1 }}" required>
+              <span class="input-group-text igt-dark" id="unit-label">шт</span>
+            </div>
+          </div>
+
+          <div class="col-sm-4">
+            <label class="form-label">Ячейка хранения</label>
+            <select name="cell_id" id="cell_id" class="form-select fc-dark">
+              <option value="">— текущая ячейка —</option>
+              {% for c in cells %}
+              <option value="{{ c.id }}"
+                {{ 'selected' if form and form.cell_id == c.id|string else '' }}>
+                {{ c.cell_code }}
+              </option>
+              {% endfor %}
+            </select>
+            <div id="cell-hint" class="form-hint mt-1">Авто: ячейка детали</div>
+          </div>
+
+          <div class="col-sm-4">
+            <label class="form-label">Исполнитель <span class="req">*</span></label>
+            <input type="text" name="operator" id="operator"
+                   class="form-control fc-dark"
+                   placeholder="ФИО или табельный №"
+                   value="{{ form.operator if form else default_operator }}"
+                   required>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Примечание <span class="text-muted">(необязательно)</span></label>
+            <input type="text" name="notes" id="notes"
+                   class="form-control fc-dark"
+                   placeholder="Например: накладная №1234, партия от поставщика..."
+                   value="{{ form.notes if form else '' }}">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Кнопки -->
+      <div class="d-flex gap-3 justify-content-end">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg">
+          Отмена
+        </a>
+        <button type="submit" class="btn btn-submit-prikhod btn-lg" id="submit-btn" disabled>
+          <i class="bi bi-check-circle"></i> Подтвердить приход
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Панель итога -->
+  <div class="col-lg-4">
+    <div class="confirm-panel sticky-top" style="top: 1.5rem;">
+      <div class="confirm-header">
+        <i class="bi bi-receipt"></i> Итог поступления
+      </div>
+
+      <div id="confirm-empty" class="confirm-empty">
+        <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
+        Заполните форму слева
+      </div>
+
+      <div id="confirm-body" style="display:none">
+        <div class="confirm-row">
+          <span class="cl">Деталь</span>
+          <span class="cv" id="c-name">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Артикул</span>
+          <span class="cv mono" id="c-article">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Ячейка</span>
+          <span class="cv mono" id="c-cell">—</span>
+        </div>
+        <div class="confirm-divider"></div>
+        <div class="confirm-row">
+          <span class="cl">Текущий остаток</span>
+          <span class="cv" id="c-current">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Поступает</span>
+          <span class="cv qty-in" id="c-qty">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Станет</span>
+          <span class="cv fw-bold" id="c-after" style="color:var(--green)">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const partSelect    = document.getElementById('part_id');
+  const partSearch    = document.getElementById('part-search');
+  const qtyInput      = document.getElementById('quantity');
+  const cellSelect    = document.getElementById('cell_id');
+  const operatorInput = document.getElementById('operator');
+  const submitBtn     = document.getElementById('submit-btn');
+
+  // ── Фильтрация списка деталей ───────────────────────────────
+  partSearch.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    Array.from(partSelect.options).forEach(opt => {
+      opt.hidden = q && !opt.text.toLowerCase().includes(q);
+    });
+  });
+
+  // ── При выборе детали — подставить её ячейку ───────────────
+  partSelect.addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    if (!this.value || !opt) return;
+
+    const cellId   = opt.dataset.cellId;
+    const cellCode = opt.dataset.cellCode;
+
+    // Авто-выбор ячейки в селекте
+    Array.from(cellSelect.options).forEach(co => {
+      if (co.value === cellId) co.selected = true;
+    });
+    document.getElementById('cell-hint').textContent =
+      'По умолчанию: ' + cellCode;
+
+    // Подсказка об остатке
+    const unit = opt.dataset.unit;
+    const qty  = opt.dataset.qty;
+    document.getElementById('part-stock-hint').innerHTML =
+      'Текущий остаток: <strong style="color:var(--accent)">'
+      + qty + ' ' + unit + '</strong>';
+    document.getElementById('unit-label').textContent = unit;
+
+    refresh();
+  });
+
+  // ── Обновление панели ───────────────────────────────────────
+  [qtyInput, cellSelect, operatorInput]
+    .forEach(el => el.addEventListener('change', refresh));
+  [qtyInput, operatorInput]
+    .forEach(el => el.addEventListener('input', refresh));
+
+  function refresh() {
+    const opt     = partSelect.options[partSelect.selectedIndex];
+    const haspart = partSelect.value && opt;
+    if (!haspart) return;
+
+    const qty      = parseInt(qtyInput.value) || 0;
+    const stock    = parseInt(opt.dataset.qty);
+    const unit     = opt.dataset.unit;
+    const cellOpt  = cellSelect.options[cellSelect.selectedIndex];
+    const cellCode = (cellOpt && cellOpt.value)
+                   ? cellOpt.text
+                   : opt.dataset.cellCode;
+
+    const allFilled = qty > 0 && operatorInput.value.trim();
+
+    document.getElementById('confirm-empty').style.display = allFilled ? 'none' : '';
+    document.getElementById('confirm-body').style.display  = allFilled ? '' : 'none';
+
+    if (allFilled) {
+      document.getElementById('c-name').textContent    = opt.dataset.name;
+      document.getElementById('c-article').textContent = opt.dataset.article;
+      document.getElementById('c-cell').textContent    = cellCode;
+      document.getElementById('c-current').textContent = stock + ' ' + unit;
+      document.getElementById('c-qty').textContent     = '+' + qty + ' ' + unit;
+      document.getElementById('c-after').textContent   = (stock + qty) + ' ' + unit;
+    }
+
+    submitBtn.disabled = !(qty > 0 && operatorInput.value.trim() && partSelect.value);
+  }
+
+  refresh();
+})();
+</script>
+{% endblock %}

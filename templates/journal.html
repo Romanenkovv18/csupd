@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Журнал операций{% endblock %}
+
+{% block content %}
+
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Журнал операций</h1>
+    <span class="page-sub">Все движения деталей · ТВ3-117</span>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> На дашборд
+  </a>
+</div>
+
+<!-- Фильтры -->
+<div class="filter-card mb-4">
+  <form method="get" id="filter-form">
+    <div class="row g-2 align-items-end">
+
+      <div class="col-lg-3 col-sm-6">
+        <label class="form-label-sm">Поиск</label>
+        <div class="search-wrap">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text" name="q" value="{{ q }}"
+                 class="form-control fc-dark"
+                 placeholder="Артикул, деталь, исполнитель, двигатель...">
+        </div>
+      </div>
+
+      <div class="col-lg-2 col-sm-6">
+        <label class="form-label-sm">Тип операции</label>
+        <select name="op_type" class="form-select fc-dark">
+          <option value=""   {{ 'selected' if not op_type }}>Все</option>
+          <option value="приход"  {{ 'selected' if op_type == 'приход' }}>Приход</option>
+          <option value="расход"  {{ 'selected' if op_type == 'расход' }}>Расход</option>
+        </select>
+      </div>
+
+      <div class="col-lg-2 col-sm-6">
+        <label class="form-label-sm">Дата с</label>
+        <input type="date" name="date_from" value="{{ date_from }}"
+               class="form-control fc-dark">
+      </div>
+
+      <div class="col-lg-2 col-sm-6">
+        <label class="form-label-sm">Дата по</label>
+        <input type="date" name="date_to" value="{{ date_to }}"
+               class="form-control fc-dark">
+      </div>
+
+      <div class="col-lg-3 col-sm-12">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">
+            <i class="bi bi-funnel"></i> Применить
+          </button>
+          {% if q or op_type or date_from or date_to %}
+          <a href="{{ url_for('journal') }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
+            <i class="bi bi-x-lg"></i>
+          </a>
+          {% endif %}
+          <a href="{{ url_for('journal_export', q=q, op_type=op_type, date_from=date_from, date_to=date_to) }}"
+             class="btn btn-export" title="Экспорт в Excel">
+            <i class="bi bi-file-earmark-excel"></i>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+  <div class="filter-meta mt-2">
+    {% if q or op_type or date_from or date_to %}
+      <span class="badge-filter">
+        <i class="bi bi-funnel-fill"></i> Активен фильтр
+        {% if op_type %} · {{ op_type }}{% endif %}
+        {% if date_from %} · с {{ date_from }}{% endif %}
+        {% if date_to %} · по {{ date_to }}{% endif %}
+        {% if q %} · «{{ q }}»{% endif %}
+      </span>
+    {% endif %}
+    <span class="text-muted small">
+      Найдено: <strong>{{ total }}</strong> операций
+      {% if total_pages > 1 %} · страница {{ page }} из {{ total_pages }}{% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- Таблица -->
+<div class="table-container mb-4">
+  <table class="table table-parts table-journal">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th style="width:140px">Дата и время</th>
+        <th style="width:80px">Тип</th>
+        <th>Артикул</th>
+        <th>Наименование</th>
+        <th style="width:80px">Кол-во</th>
+        <th style="width:90px">Ячейка</th>
+        <th>Двигатель</th>
+        <th>Этап</th>
+        <th>Исполнитель</th>
+        <th>Примечание</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if movements %}
+        {% for m in movements %}
+        {% set is_in = m.operation_type == 'приход' %}
+        <tr class="jrow {{ 'jrow-in' if is_in else 'jrow-out' }}">
+          <td class="text-muted small">{{ (page-1)*per_page + loop.index }}</td>
+          <td class="dt-cell">
+            <span class="dt-date">{{ m.created_at[:10] }}</span>
+            <span class="dt-time">{{ m.created_at[11:16] }}</span>
+          </td>
+          <td>
+            <span class="op-badge {{ 'op-badge-in' if is_in else 'op-badge-out' }}">
+              {{ '+' if is_in else '−' }}&nbsp;{{ m.operation_type }}
+            </span>
+          </td>
+          <td class="article-cell">{{ m.article }}</td>
+          <td>{{ m.part_name }}</td>
+          <td class="fw-600 {{ 'color-green' if is_in else 'color-red' }}">
+            {{ ('+' if is_in else '−') }}{{ m.quantity }}&thinsp;<span class="unit">{{ m.unit }}</span>
+          </td>
+          <td>
+            {% if m.cell_code %}
+            <span class="cell-badge">{{ m.cell_code }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="small">{{ m.engine_number or '—' }}</td>
+          <td class="small text-muted">{{ m.assembly_stage or '—' }}</td>
+          <td class="small">{{ m.operator or '—' }}</td>
+          <td class="small text-muted">{{ m.notes or '' }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="11" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            Операций не найдено
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Пагинация -->
+{% if total_pages > 1 %}
+<nav class="d-flex justify-content-center">
+  <ul class="pagination-dark">
+
+    <li class="{{ 'disabled' if page <= 1 }}">
+      <a href="{{ url_for('journal', q=q, op_type=op_type, date_from=date_from, date_to=date_to, page=page-1) }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+
+    {% set start = [page - 2, 1] | max %}
+    {% set end   = [start + 4, total_pages] | min %}
+    {% set start = [end - 4, 1] | max %}
+
+    {% if start > 1 %}
+    <li>
+      <a href="{{ url_for('journal', q=q, op_type=op_type, date_from=date_from, date_to=date_to, page=1) }}">1</a>
+    </li>
+    {% if start > 2 %}<li class="dots">…</li>{% endif %}
+    {% endif %}
+
+    {% for p in range(start, end + 1) %}
+    <li class="{{ 'active' if p == page }}">
+      <a href="{{ url_for('journal', q=q, op_type=op_type, date_from=date_from, date_to=date_to, page=p) }}">{{ p }}</a>
+    </li>
+    {% endfor %}
+
+    {% if end < total_pages %}
+    {% if end < total_pages - 1 %}<li class="dots">…</li>{% endif %}
+    <li>
+      <a href="{{ url_for('journal', q=q, op_type=op_type, date_from=date_from, date_to=date_to, page=total_pages) }}">{{ total_pages }}</a>
+    </li>
+    {% endif %}
+
+    <li class="{{ 'disabled' if page >= total_pages }}">
+      <a href="{{ url_for('journal', q=q, op_type=op_type, date_from=date_from, date_to=date_to, page=page+1) }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

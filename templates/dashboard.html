@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Дашборд{% endblock %}
+
+{% block content %}
+
+<!-- Заголовок страницы -->
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Дашборд остатков</h1>
+    <span class="page-sub">Двигатель ТВ3-117 · участок комплектования</span>
+  </div>
+  <div class="refresh-badge">
+    <i class="bi bi-arrow-clockwise"></i>
+    обновление через <span id="countdown">5:00</span>
+  </div>
+</div>
+
+<!-- Три карточки статусов -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card stat-red">
+      <div class="stat-icon"><i class="bi bi-exclamation-octagon-fill"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ red_count }}</div>
+        <div class="stat-label">Критический остаток</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card stat-yellow">
+      <div class="stat-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ yellow_count }}</div>
+        <div class="stat-label">Внимание</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card stat-green">
+      <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ green_count }}</div>
+        <div class="stat-label">Норма</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="quick-actions mb-4">
+  <a href="{{ url_for('prikhod') }}" class="btn btn-action btn-prikhod">
+    <i class="bi bi-box-arrow-in-down"></i> Приход
+  </a>
+  <a href="{{ url_for('raskhod') }}" class="btn btn-action btn-raskhod">
+    <i class="bi bi-box-arrow-up"></i> Расход
+  </a>
+  <button class="btn btn-action btn-search-qr" title="Поиск по артикулу">
+    <i class="bi bi-search"></i> Поиск детали
+  </button>
+</div>
+
+<!-- Строка поиска -->
+<div class="filter-bar mb-3" style="position:relative">
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <div class="search-wrap flex-grow-1">
+      <i class="bi bi-search search-icon"></i>
+      <input type="text" name="q" value="{{ q }}"
+             class="form-control search-input"
+             placeholder="Артикул или наименование...">
+    </div>
+    <button type="submit" class="btn btn-primary px-3">Найти</button>
+    {% if q %}
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-x-lg"></i>
+    </a>
+    {% endif %}
+  </form>
+  <div class="d-flex align-items-center justify-content-between mt-1">
+    <div class="result-count text-muted small">
+      {% if q %}
+        Найдено: {{ parts|length }} позиций по запросу «{{ q }}»
+      {% else %}
+        Всего позиций: {{ parts|length }}
+      {% endif %}
+    </div>
+    <a href="{{ url_for('stock_export', q=q) }}"
+       class="btn btn-export btn-export-sm" title="Экспорт остатков в Excel">
+      <i class="bi bi-file-earmark-excel"></i>
+      <span class="d-none d-md-inline ms-1">Excel</span>
+    </a>
+  </div>
+</div>
+
+<!-- Основной блок: таблица + лента операций -->
+<div class="row g-3">
+
+  <!-- Таблица остатков -->
+  <div class="col-xl-8 col-lg-7">
+    <div class="table-container">
+      <table class="table table-parts">
+        <thead>
+          <tr>
+            <th style="width:40px"></th>
+            <th>Артикул</th>
+            <th>Наименование</th>
+            <th>Ячейка</th>
+            <th>Остаток</th>
+            <th>Пороги</th>
+            <th style="width:44px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if parts %}
+            {% for p in parts %}
+            <tr class="part-row part-row--{{ p.status }}">
+              <td class="dot-cell">
+                <span class="traffic-dot dot-{{ p.status }}"
+                      title="{{ {'red':'Критично','yellow':'Внимание','green':'Норма'}[p.status] }}">
+                </span>
+              </td>
+              <td class="article-cell">{{ p.article }}</td>
+              <td>{{ p.name }}</td>
+              <td><span class="cell-badge">{{ p.cell_code }}</span></td>
+              <td class="qty-cell qty-{{ p.status }}">
+                {{ p.quantity }}&thinsp;<span class="unit">{{ p.unit }}</span>
+              </td>
+              <td class="thr-cell">
+                <span class="thr-red" title="Красный порог">▼{{ p.red_threshold }}</span>
+                <span class="thr-yellow" title="Жёлтый порог">▼{{ p.yellow_threshold }}</span>
+              </td>
+              <td>
+                <button type="button"
+                        class="btn-order {{ 'btn-order-urgent' if p.status in ('red','yellow') else 'btn-order-normal' }}"
+                        title="Создать заявку на пополнение"
+                        data-bs-toggle="modal" data-bs-target="#orderModal"
+                        data-part-id="{{ p.id }}"
+                        data-part-name="{{ p.name }}"
+                        data-part-article="{{ p.article }}"
+                        data-part-unit="{{ p.unit }}"
+                        data-current-qty="{{ p.quantity }}"
+                        data-monthly-plan="{{ p.monthly_plan }}">
+                  <i class="bi bi-cart-plus"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                Позиции не найдены
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Лента последних операций -->
+  <div class="col-xl-4 col-lg-5">
+    <div class="ops-panel">
+      <div class="ops-header">
+        <i class="bi bi-clock-history"></i> Последние операции
+      </div>
+      {% if movements %}
+        {% for m in movements %}
+        <div class="op-item {{ 'op-in' if m.operation_type == 'приход' else 'op-out' }}">
+          <div class="op-sign">{{ '+' if m.operation_type == 'приход' else '−' }}</div>
+          <div class="op-body">
+            <div class="op-name">{{ m.part_name }}</div>
+            <div class="op-meta">
+              {{ m.quantity }}&thinsp;{{ m.unit }}
+              {% if m.operator %} · {{ m.operator }}{% endif %}
+              {% if m.created_at %} · {{ m.created_at[:16] }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="ops-empty">
+          <i class="bi bi-inbox d-block fs-3 mb-2"></i>
+          Операций пока нет
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div><!-- /row -->
+
+<!-- Модальное окно: создание заявки на пополнение -->
+<div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title">
+          <i class="bi bi-cart-plus me-2"></i>Заявка на пополнение
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post" action="{{ url_for('zayavki_create') }}">
+        <input type="hidden" name="part_id" id="modal-part-id">
+        <input type="hidden" name="next" value="{{ url_for('dashboard') }}">
+
+        <div class="modal-body">
+          <div class="modal-part-info mb-3">
+            <div class="mpi-article" id="modal-article">—</div>
+            <div class="mpi-name"    id="modal-name">—</div>
+            <div class="mpi-stock">
+              Текущий остаток:
+              <span class="mpi-qty" id="modal-qty">—</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Количество к заказу <span class="req">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" id="modal-quantity"
+                     class="form-control fc-dark" min="1" required>
+              <span class="input-group-text igt-dark" id="modal-unit">шт</span>
+            </div>
+            <div class="form-hint mt-1" id="modal-hint"></div>
+          </div>
+
+          <div class="mb-1">
+            <label class="form-label">Кто создаёт заявку <span class="req">*</span></label>
+            <input type="text" name="created_by" id="modal-operator"
+                   class="form-control fc-dark"
+                   placeholder="ФИО или табельный номер" required>
+          </div>
+        </div>
+
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Отмена
+          </button>
+          <button type="submit" class="btn btn-submit-prikhod">
+            <i class="bi bi-check-circle"></i> Создать заявку
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Автообновление ──────────────────────────────
+  let s = 300;
+  const el = document.getElementById('countdown');
+  setInterval(function () {
+    s--;
+    if (s <= 0) { location.reload(); return; }
+    el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 1000);
+
+  // ── Заполнение модального окна заявки ──────────
+  document.getElementById('orderModal').addEventListener('show.bs.modal', function (e) {
+    const btn = e.relatedTarget;
+    const partId      = btn.dataset.partId;
+    const partName    = btn.dataset.partName;
+    const partArticle = btn.dataset.partArticle;
+    const partUnit    = btn.dataset.partUnit;
+    const currentQty  = parseInt(btn.dataset.currentQty);
+    const monthlyPlan = parseInt(btn.dataset.monthlyPlan);
+
+    document.getElementById('modal-part-id').value   = partId;
+    document.getElementById('modal-article').textContent = partArticle;
+    document.getElementById('modal-name').textContent    = partName;
+    document.getElementById('modal-qty').textContent     = currentQty + ' ' + partUnit;
+    document.getElementById('modal-unit').textContent    = partUnit;
+
+    // Рекомендуемое количество = месячный план
+    const suggested = monthlyPlan || 1;
+    document.getElementById('modal-quantity').value = suggested;
+    document.getElementById('modal-hint').textContent =
+      'Рекомендуется: ' + suggested + ' ' + partUnit + ' (месячный план)';
+  });
+})();
+</script>
+{% endblock %}

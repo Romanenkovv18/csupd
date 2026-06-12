@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Заявки на пополнение{% endblock %}
+
+{% block content %}
+
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Заявки на пополнение</h1>
+    <span class="page-sub">Управление заказами деталей</span>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> На дашборд
+  </a>
+</div>
+
+<!-- Вкладки статусов -->
+<div class="status-tabs mb-4">
+  <a href="{{ url_for('zayavki') }}"
+     class="stab {{ 'stab-active' if not status_filter }}">
+    Все
+    <span class="stab-count">{{ (counts.values()|sum) }}</span>
+  </a>
+  <a href="{{ url_for('zayavki', status='Создана') }}"
+     class="stab stab-new {{ 'stab-active' if status_filter == 'Создана' }}">
+    Создана
+    <span class="stab-count">{{ counts.get('Создана', 0) }}</span>
+  </a>
+  <a href="{{ url_for('zayavki', status='В работе') }}"
+     class="stab stab-wip {{ 'stab-active' if status_filter == 'В работе' }}">
+    В работе
+    <span class="stab-count">{{ counts.get('В работе', 0) }}</span>
+  </a>
+  <a href="{{ url_for('zayavki', status='Выполнена') }}"
+     class="stab stab-done {{ 'stab-active' if status_filter == 'Выполнена' }}">
+    Выполнена
+    <span class="stab-count">{{ counts.get('Выполнена', 0) }}</span>
+  </a>
+</div>
+
+<!-- Таблица заявок -->
+<div class="table-container">
+  <table class="table table-parts">
+    <thead>
+      <tr>
+        <th style="width:50px">№</th>
+        <th style="width:130px">Создана</th>
+        <th>Деталь</th>
+        <th>Артикул</th>
+        <th style="width:90px">Заказано</th>
+        <th style="width:90px">В наличии</th>
+        <th style="width:110px">Статус</th>
+        <th>Кто создал</th>
+        <th style="width:140px">Действие</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if requests_list %}
+        {% for r in requests_list %}
+        <tr class="zrow zrow-{{ r.status | lower | replace(' ', '-') }}">
+          <td class="text-muted small">{{ r.id }}</td>
+          <td class="small">
+            <span class="dt-date">{{ r.created_at[:10] }}</span>
+            <span class="dt-time">{{ r.created_at[11:16] }}</span>
+          </td>
+          <td>{{ r.part_name }}</td>
+          <td class="article-cell">{{ r.article }}</td>
+          <td class="fw-600">{{ r.quantity }}&thinsp;<span class="unit">{{ r.unit }}</span></td>
+          <td class="small text-muted">{{ r.stock_qty }}&thinsp;{{ r.unit }}</td>
+          <td>
+            <span class="status-badge status-{{ r.status | lower | replace(' ', '-') }}">
+              {{ r.status }}
+            </span>
+          </td>
+          <td class="small">{{ r.created_by }}</td>
+          <td>
+            {% if r.status == 'Создана' %}
+              <form method="post"
+                    action="{{ url_for('zayavki_update', req_id=r.id) }}"
+                    style="display:inline">
+                <input type="hidden" name="status" value="В работе">
+                <button type="submit" class="btn-status-action btn-wip"
+                        title="Взять в работу">
+                  <i class="bi bi-play-circle"></i> В работу
+                </button>
+              </form>
+            {% elif r.status == 'В работе' %}
+              <form method="post"
+                    action="{{ url_for('zayavki_update', req_id=r.id) }}"
+                    style="display:inline">
+                <input type="hidden" name="status" value="Выполнена">
+                <button type="submit" class="btn-status-action btn-done"
+                        title="Отметить выполненной">
+                  <i class="bi bi-check-circle"></i> Выполнена
+                </button>
+              </form>
+            {% else %}
+              <span class="text-muted small">
+                <i class="bi bi-check-all"></i>
+                {% if r.completed_at %}{{ r.completed_at[:10] }}{% endif %}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-clipboard-x fs-2 d-block mb-2"></i>
+            {% if status_filter %}
+              Нет заявок со статусом «{{ status_filter }}»
+            {% else %}
+              Заявок пока нет. Создайте заявку с дашборда кнопкой
+              <i class="bi bi-cart-plus"></i>
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

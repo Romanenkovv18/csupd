@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Расход деталей{% endblock %}
+
+{% block content %}
+
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Фиксация расхода</h1>
+    <span class="page-sub">Списание деталей с участка комплектования</span>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> На дашборд
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Форма -->
+  <div class="col-lg-8">
+    <form method="post" id="raskhod-form" novalidate>
+
+      <!-- 1. Двигатель и этап -->
+      <div class="form-card mb-3">
+        <div class="form-section-title">
+          <span class="step-badge">1</span> Двигатель и этап сборки
+        </div>
+        <div class="row g-3 mt-0">
+          <div class="col-sm-6">
+            <label class="form-label">Номер двигателя <span class="req">*</span></label>
+            <input type="text" name="engine_number" id="engine_number"
+                   class="form-control fc-dark"
+                   placeholder="Например: 117-03-4215"
+                   value="{{ form.engine_number if form else '' }}"
+                   autocomplete="off" required>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Этап сборки <span class="req">*</span></label>
+            <select name="assembly_stage" id="assembly_stage"
+                    class="form-select fc-dark" required>
+              <option value="">— выберите этап —</option>
+              {% for stage in assembly_stages %}
+              <option value="{{ stage }}"
+                {{ 'selected' if form and form.assembly_stage == stage else '' }}>
+                {{ stage }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Деталь -->
+      <div class="form-card mb-3">
+        <div class="form-section-title">
+          <span class="step-badge">2</span> Деталь
+        </div>
+        <div class="mt-0">
+          <label class="form-label">Поиск по артикулу или наименованию</label>
+          <div class="search-wrap mb-2">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="part-search"
+                   class="form-control fc-dark"
+                   placeholder="Начните вводить артикул или название...">
+          </div>
+          <select name="part_id" id="part_id"
+                  class="form-select fc-dark part-select"
+                  size="7" required>
+            {% for p in parts %}
+            <option value="{{ p.id }}"
+                    data-qty="{{ p.quantity }}"
+                    data-unit="{{ p.unit }}"
+                    data-name="{{ p.name }}"
+                    data-article="{{ p.article }}"
+                    {{ 'selected' if form and form.part_id == p.id|string else '' }}>
+              {{ p.article }} — {{ p.name }}
+              {% if p.quantity == 0 %}(нет в наличии){% else %}({{ p.quantity }} {{ p.unit }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          <div id="part-stock-hint" class="form-hint mt-1">Выберите деталь из списка</div>
+        </div>
+      </div>
+
+      <!-- 3. Количество и исполнитель -->
+      <div class="form-card mb-4">
+        <div class="form-section-title">
+          <span class="step-badge">3</span> Количество и исполнитель
+        </div>
+        <div class="row g-3 mt-0">
+          <div class="col-sm-6">
+            <label class="form-label">Количество <span class="req">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" id="quantity"
+                     class="form-control fc-dark"
+                     min="1" value="{{ form.quantity if form else 1 }}" required>
+              <span class="input-group-text igt-dark" id="unit-label">шт</span>
+            </div>
+            <div id="qty-hint" class="form-hint mt-1">Выберите деталь</div>
+            <div class="invalid-feedback" id="qty-feedback"></div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Исполнитель <span class="req">*</span></label>
+            <input type="text" name="operator" id="operator"
+                   class="form-control fc-dark"
+                   placeholder="ФИО или табельный номер"
+                   value="{{ form.operator if form else default_operator }}"
+                   required>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопки -->
+      <div class="d-flex gap-3 justify-content-end">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg">
+          Отмена
+        </a>
+        <button type="submit" class="btn btn-submit-raskhod btn-lg" id="submit-btn" disabled>
+          <i class="bi bi-check-circle"></i> Подтвердить расход
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Панель итога -->
+  <div class="col-lg-4">
+    <div class="confirm-panel sticky-top" style="top: 1.5rem;">
+      <div class="confirm-header">
+        <i class="bi bi-receipt"></i> Итог списания
+      </div>
+
+      <div id="confirm-empty" class="confirm-empty">
+        <i class="bi bi-clipboard-x d-block fs-2 mb-2 opacity-50"></i>
+        Заполните форму слева
+      </div>
+
+      <div id="confirm-body" style="display:none">
+        <div class="confirm-row">
+          <span class="cl">Деталь</span>
+          <span class="cv" id="c-name">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Артикул</span>
+          <span class="cv mono" id="c-article">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Двигатель</span>
+          <span class="cv" id="c-engine">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Этап</span>
+          <span class="cv" id="c-stage">—</span>
+        </div>
+        <div class="confirm-divider"></div>
+        <div class="confirm-row">
+          <span class="cl">Списывается</span>
+          <span class="cv qty-out" id="c-qty">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Текущий остаток</span>
+          <span class="cv" id="c-current">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Остаток после</span>
+          <span class="cv fw-bold" id="c-after">—</span>
+        </div>
+        <div id="c-warn" class="confirm-warn" style="display:none">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          Недостаточно на складе!
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const partSelect    = document.getElementById('part_id');
+  const partSearch    = document.getElementById('part-search');
+  const qtyInput      = document.getElementById('quantity');
+  const engineInput   = document.getElementById('engine_number');
+  const stageSelect   = document.getElementById('assembly_stage');
+  const operatorInput = document.getElementById('operator');
+  const submitBtn     = document.getElementById('submit-btn');
+
+  // ── Фильтрация списка деталей ───────────────────────────────
+  partSearch.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    Array.from(partSelect.options).forEach(opt => {
+      opt.hidden = q && !opt.text.toLowerCase().includes(q);
+    });
+  });
+
+  // ── Обновление панели при любом изменении ──────────────────
+  [partSelect, qtyInput, engineInput, stageSelect, operatorInput]
+    .forEach(el => el.addEventListener('change', refresh));
+  [qtyInput, engineInput, operatorInput]
+    .forEach(el => el.addEventListener('input', refresh));
+
+  function refresh() {
+    const opt     = partSelect.options[partSelect.selectedIndex];
+    const haspart = partSelect.value && opt;
+    const qty     = parseInt(qtyInput.value) || 0;
+    const stock   = haspart ? parseInt(opt.dataset.qty) : 0;
+    const unit    = haspart ? opt.dataset.unit : 'шт';
+
+    // Подсказка под списком деталей
+    if (haspart) {
+      const hint = document.getElementById('part-stock-hint');
+      if (stock === 0) {
+        hint.innerHTML = '<span style="color:var(--red)">Нет в наличии</span>';
+      } else {
+        hint.innerHTML = 'В наличии: <strong style="color:var(--green)">'
+                       + stock + ' ' + unit + '</strong>';
+      }
+      document.getElementById('unit-label').textContent = unit;
+      document.getElementById('qty-hint').textContent = 'Максимум: ' + stock + ' ' + unit;
+    }
+
+    // Панель итога
+    const hasAll = haspart && qty > 0
+                && engineInput.value.trim()
+                && stageSelect.value
+                && operatorInput.value.trim();
+
+    document.getElementById('confirm-empty').style.display = hasAll ? 'none' : '';
+    document.getElementById('confirm-body').style.display  = hasAll ? '' : 'none';
+
+    if (hasAll) {
+      document.getElementById('c-name').textContent    = opt.dataset.name;
+      document.getElementById('c-article').textContent = opt.dataset.article;
+      document.getElementById('c-engine').textContent  = engineInput.value.trim();
+      document.getElementById('c-stage').textContent   = stageSelect.value;
+      document.getElementById('c-qty').textContent     = qty + ' ' + unit;
+      document.getElementById('c-current').textContent = stock + ' ' + unit;
+
+      const after   = stock - qty;
+      const afterEl = document.getElementById('c-after');
+      afterEl.textContent  = after + ' ' + unit;
+      afterEl.style.color  = after < 0 ? 'var(--red)' : after === 0 ? 'var(--yellow)' : 'var(--green)';
+
+      const over = qty > stock;
+      document.getElementById('c-warn').style.display = over ? '' : 'none';
+      qtyInput.classList.toggle('is-invalid', over);
+      document.getElementById('qty-feedback').textContent =
+        over ? ('Максимум: ' + stock + ' ' + unit) : '';
+    }
+
+    // Активируем кнопку только когда всё заполнено и остатков хватает
+    const allFilled = partSelect.value
+                   && qty > 0
+                   && qty <= stock
+                   && engineInput.value.trim()
+                   && stageSelect.value
+                   && operatorInput.value.trim();
+    submitBtn.disabled = !allFilled;
+  }
+
+  // Запустить при загрузке (если форма была заполнена до ошибки)
+  refresh();
+})();
+</script>
+{% endblock %}

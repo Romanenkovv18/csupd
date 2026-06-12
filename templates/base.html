@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ЦСУПД — {% block title %}{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Боковое меню -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <i class="bi bi-wind brand-icon"></i>
+      <span class="brand-text">ЦСУПД</span>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li>
+        <a href="{{ url_for('dashboard') }}"
+           class="{{ 'active' if request.endpoint == 'dashboard' }}">
+          <i class="bi bi-speedometer2"></i><span>Главная</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('dashboard') }}"
+           class="{{ 'active' if request.endpoint == 'dashboard' }}">
+          <i class="bi bi-boxes"></i><span>Остатки</span>
+        </a>
+      </li>
+
+      {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
+      <li>
+        <a href="{{ url_for('prikhod') }}"
+           class="{{ 'active' if request.endpoint == 'prikhod' }}">
+          <i class="bi bi-box-arrow-in-down"></i><span>Приход</span>
+        </a>
+      </li>
+      {% endif %}
+
+      <li>
+        <a href="{{ url_for('raskhod') }}"
+           class="{{ 'active' if request.endpoint == 'raskhod' }}">
+          <i class="bi bi-box-arrow-up"></i><span>Расход</span>
+        </a>
+      </li>
+      <li>
+        <a href="#"><i class="bi bi-grid-3x3"></i><span>Ячейки</span></a>
+      </li>
+      <li>
+        <a href="#"><i class="bi bi-card-list"></i><span>Детали</span></a>
+      </li>
+
+      {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
+      <li>
+        <a href="{{ url_for('zayavki') }}"
+           class="{{ 'active' if request.endpoint in ('zayavki','zayavki_create','zayavki_update') }}">
+          <i class="bi bi-clipboard-plus"></i><span>Заявки</span>
+        </a>
+      </li>
+      {% endif %}
+
+      <li>
+        <a href="{{ url_for('journal') }}"
+           class="{{ 'active' if request.endpoint == 'journal' }}">
+          <i class="bi bi-journal-text"></i><span>Журнал операций</span>
+        </a>
+      </li>
+      <li>
+        <a href="#"><i class="bi bi-bar-chart-line"></i><span>Отчёты</span></a>
+      </li>
+      <li>
+        <a href="#"><i class="bi bi-gear"></i><span>Настройки</span></a>
+      </li>
+    </ul>
+
+    <!-- Пользователь -->
+    {% if current_user %}
+    <div class="sidebar-user">
+      <div class="su-avatar">{{ current_user.full_name[0] | upper }}</div>
+      <div class="su-info">
+        <div class="su-name">{{ current_user.full_name }}</div>
+        <div class="su-role">{{ current_user.role_name }}</div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="su-logout" title="Выйти">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+    {% else %}
+    <div class="sidebar-footer">
+      <span>ТВ3-117 · УЗГА</span>
+    </div>
+    {% endif %}
+  </nav>
+
+  <!-- Основной контент -->
+  <main class="main-content">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list mb-3">
+          {% for category, message in messages %}
+          <div class="flash-item flash-{{ category }}">
+            <i class="bi {{ 'bi-check-circle-fill' if category == 'success' else 'bi-exclamation-triangle-fill' }}"></i>
+            {{ message }}
+            <button type="button" class="flash-close" onclick="this.parentElement.remove()">×</button>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
