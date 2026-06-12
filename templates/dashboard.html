@@ -225,10 +225,10 @@
           </div>
 
           <div class="mb-1">
-            <label class="form-label">Кто создаёт заявку <span class="req">*</span></label>
-            <input type="text" name="created_by" id="modal-operator"
-                   class="form-control fc-dark"
-                   placeholder="ФИО или табельный номер" required>
+            <label class="form-label">Кто создаёт заявку</label>
+            <div class="form-control-readonly">
+              <i class="bi bi-person-fill me-1 text-muted"></i>{{ current_user.full_name }}
+            </div>
           </div>
         </div>
 

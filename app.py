@@ -385,7 +385,7 @@ def zayavki():
 def zayavki_create():
     part_id    = request.form.get('part_id', '').strip()
     quantity   = request.form.get('quantity', '').strip()
-    created_by = request.form.get('created_by', '').strip()
+    created_by = session.get('full_name') or session.get('username', 'Неизвестно')
 
     if not part_id or not quantity or not quantity.isdigit() or int(quantity) < 1:
         flash('Некорректные данные для создания заявки.', 'danger')
@@ -395,8 +395,7 @@ def zayavki_create():
     db.execute(
         'INSERT INTO replenishment_requests (part_id, quantity, status, created_by) '
         'VALUES (?, ?, ?, ?)',
-        (part_id, int(quantity), 'Создана',
-         created_by or session.get('full_name', 'Неизвестно'))
+        (part_id, int(quantity), 'Создана', created_by)
     )
     db.commit()
     part = db.execute('SELECT name, article FROM parts WHERE id = ?', (part_id,)).fetchone()
