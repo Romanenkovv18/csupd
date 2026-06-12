@@ -70,6 +70,41 @@ CREATE TABLE IF NOT EXISTS users (
     full_name     TEXT,
     role          TEXT DEFAULT 'sborshik'
 );
+
+CREATE TABLE IF NOT EXISTS assembly_stages (
+    id           INTEGER PRIMARY KEY,
+    engine_type  TEXT NOT NULL,
+    stage_number INTEGER NOT NULL,
+    stage_name   TEXT NOT NULL,
+    description  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stage_parts (
+    id       INTEGER PRIMARY KEY,
+    stage_id INTEGER REFERENCES assembly_stages(id),
+    part_id  INTEGER REFERENCES parts(id),
+    quantity INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS engine_assemblies (
+    id            INTEGER PRIMARY KEY,
+    engine_number TEXT UNIQUE NOT NULL,
+    engine_type   TEXT NOT NULL,
+    current_stage INTEGER DEFAULT 1,
+    status        TEXT DEFAULT 'В работе',
+    assembler     TEXT NOT NULL,
+    started_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at  DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS assembly_history (
+    id           INTEGER PRIMARY KEY,
+    assembly_id  INTEGER REFERENCES engine_assemblies(id),
+    stage_id     INTEGER REFERENCES assembly_stages(id),
+    completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    assembler    TEXT,
+    is_cancelled INTEGER DEFAULT 0
+);
 """
 
 
@@ -198,6 +233,78 @@ def main():
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))",
             (pid, cid, op, qty, eng, stage, oper, notes, f'-{days} days'),
         )
+
+    # ── Операции сборки ТВ3-117 ──────────────────────────────────────────────
+    stages_tv3 = [
+        (1, 'Входное устройство',  'Проверка и установка деталей входного устройства'),
+        (2, 'Сборка компрессора',  'Установка лопаток и деталей компрессора'),
+        (3, 'Камера сгорания',     'Монтаж камеры сгорания'),
+        (4, 'Турбина',             'Установка рабочих лопаток турбины'),
+        (5, 'Свободная турбина',   'Сборка и установка свободной турбины'),
+        (6, 'Масляная система',    'Монтаж масляных уплотнений и трубопроводов'),
+        (7, 'Финальная сборка',    'Контровка, затяжка и финальный контроль'),
+    ]
+    for num, name, desc in stages_tv3:
+        conn.execute(
+            "INSERT INTO assembly_stages (engine_type, stage_number, stage_name, description) "
+            "VALUES (?, ?, ?, ?)",
+            ('ТВ3-117', num, name, desc),
+        )
+
+    # Детали операций: {stage_number: [(part_id, qty), ...]}
+    stage_parts_data = {
+        1: [(2, 2),  (13, 1)],
+        2: [(1, 3),  (8, 11), (3, 1)],
+        3: [(4, 11), (14, 1)],
+        4: [(35, 4), (37, 21)],
+        5: [(8, 15), (39, 6)],
+        6: [(10, 2), (11, 1), (13, 2)],
+        7: [(51, 30), (22, 75)],
+    }
+    for stage_num, parts_list in stage_parts_data.items():
+        sid = conn.execute(
+            "SELECT id FROM assembly_stages WHERE engine_type='ТВ3-117' AND stage_number=?",
+            (stage_num,)
+        ).fetchone()[0]
+        for pid, qty in parts_list:
+            conn.execute(
+                "INSERT INTO stage_parts (stage_id, part_id, quantity) VALUES (?, ?, ?)",
+                (sid, pid, qty),
+            )
+
+    # Тестовые сборки на разных этапах
+    test_assemblies = [
+        ('ТВ3-117 №А-2024-001', 'ТВ3-117', 1, 'В работе', 'sborshik'),
+        ('ТВ3-117 №А-2024-002', 'ТВ3-117', 3, 'В работе', 'sborshik'),
+        ('ТВ3-117 №А-2024-003', 'ТВ3-117', 7, 'В работе', 'sborshik'),
+    ]
+    for eng_num, eng_type, cur_stage, status, assembler in test_assemblies:
+        conn.execute(
+            "INSERT INTO engine_assemblies "
+            "(engine_number, engine_type, current_stage, status, assembler, started_at) "
+            "VALUES (?, ?, ?, ?, ?, datetime('now', '-3 days'))",
+            (eng_num, eng_type, cur_stage, status, assembler),
+        )
+
+    # История: сборка №2 выполнила операции 1-2, сборка №3 выполнила 1-6
+    history_data = [
+        ('ТВ3-117 №А-2024-002', [1, 2]),
+        ('ТВ3-117 №А-2024-003', list(range(1, 7))),
+    ]
+    for eng_num, done_stages in history_data:
+        asm_id = conn.execute(
+            "SELECT id FROM engine_assemblies WHERE engine_number=?", (eng_num,)
+        ).fetchone()[0]
+        for sn in done_stages:
+            sid = conn.execute(
+                "SELECT id FROM assembly_stages WHERE engine_type='ТВ3-117' AND stage_number=?",
+                (sn,)
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT INTO assembly_history (assembly_id, stage_id, assembler, completed_at) "
+                "VALUES (?, ?, ?, datetime('now', ?))",
+                (asm_id, sid, 'sborshik', f'-{7 - sn} days'),
+            )
 
     conn.commit()
     conn.close()
