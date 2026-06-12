@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Справочник деталей{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Детали</h1>
+    <span class="page-sub">Номенклатура · {{ parts | length }} позиций</span>
+  </div>
+</div>
+
+<!-- ── Фильтры ──────────────────────────────────────────────────────────────── -->
+<form method="get" action="{{ url_for('details') }}" class="det-filters mb-3">
+  <div class="det-search-wrap">
+    <i class="bi bi-search det-search-icon"></i>
+    <input type="text" name="q" value="{{ q }}"
+           class="form-control fc-dark det-search"
+           placeholder="Поиск по артикулу или наименованию…">
+    {% if q %}
+    <a href="{{ url_for('details', engine=engine) }}" class="det-search-clear" title="Сбросить">
+      <i class="bi bi-x-lg"></i>
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="det-eng-filter">
+    <a href="{{ url_for('details', q=q) }}"
+       class="btn det-eng-btn {{ 'active' if not engine }}">Все</a>
+    {% for et in engine_types %}
+    <a href="{{ url_for('details', q=q, engine=et) }}"
+       class="btn det-eng-btn {{ 'active' if engine == et }}">{{ et }}</a>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn btn-primary det-search-btn">
+    <i class="bi bi-funnel"></i> Применить
+  </button>
+</form>
+
+<!-- ── Таблица ──────────────────────────────────────────────────────────────── -->
+<div class="table-responsive">
+  <table class="table det-table">
+    <thead>
+      <tr>
+        <th style="width:2rem"></th>
+        <th>Артикул</th>
+        <th>Наименование</th>
+        <th>Двигатель</th>
+        <th>Ед.</th>
+        <th class="text-end">План/мес</th>
+        <th>Ячейка</th>
+        <th class="text-end">Остаток</th>
+        <th>Статус</th>
+        {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+        <th></th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in parts %}
+      <tr class="det-row">
+        <td>
+          <span class="tl-dot tl-{{ p.status }}"></span>
+        </td>
+        <td class="det-article">{{ p.article }}</td>
+        <td class="det-name">{{ p.name }}</td>
+        <td><span class="det-eng-badge">{{ p.engine_type }}</span></td>
+        <td class="text-muted">{{ p.unit }}</td>
+        <td class="text-end text-muted">{{ p.monthly_plan }}</td>
+        <td><span class="det-cell">{{ p.cell_code or '—' }}</span></td>
+        <td class="text-end">
+          <span class="det-qty det-qty-{{ p.status }}">{{ p.stock_qty }}</span>
+        </td>
+        <td>
+          {% if p.status == 'red' %}
+            <span class="det-status-badge det-status-red">Критично</span>
+          {% elif p.status == 'yellow' %}
+            <span class="det-status-badge det-status-yellow">Внимание</span>
+          {% else %}
+            <span class="det-status-badge det-status-green">Норма</span>
+          {% endif %}
+        </td>
+        {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+        <td>
+          <button type="button" class="btn det-edit-btn"
+                  data-bs-toggle="modal" data-bs-target="#thresholdModal"
+                  data-part-id="{{ p.id }}"
+                  data-part-name="{{ p.name }}"
+                  data-red="{{ p.red_threshold }}"
+                  data-yellow="{{ p.yellow_threshold }}"
+                  title="Редактировать пороги">
+            <i class="bi bi-sliders"></i>
+          </button>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="10" class="text-center text-muted py-4">
+          <i class="bi bi-search me-2"></i>Ничего не найдено
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Легенда ──────────────────────────────────────────────────────────────── -->
+<div class="det-legend">
+  <span class="tl-dot tl-red"></span> Критично
+  &nbsp;&nbsp;
+  <span class="tl-dot tl-yellow"></span> Внимание
+  &nbsp;&nbsp;
+  <span class="tl-dot tl-green"></span> Норма
+  {% set red_cnt    = parts | selectattr('status','eq','red')    | list | length %}
+  {% set yellow_cnt = parts | selectattr('status','eq','yellow') | list | length %}
+  {% set green_cnt  = parts | selectattr('status','eq','green')  | list | length %}
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <span class="text-danger fw-600">{{ red_cnt }}</span> красных,
+  <span class="text-warning fw-600">{{ yellow_cnt }}</span> жёлтых,
+  <span class="text-success fw-600">{{ green_cnt }}</span> зелёных
+</div>
+
+<!-- ── Модал редактирования порогов (мастер+) ─────────────────────────────── -->
+{% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+<div class="modal fade" id="thresholdModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title">
+          <i class="bi bi-sliders me-2"></i>Пороги светофора
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="thresholdForm">
+        <input type="hidden" name="back_q" value="{{ q }}">
+        <div class="modal-body">
+          <div class="mb-1 text-muted small" id="thr-part-name"></div>
+          <div class="mb-3">
+            <label class="form-label">
+              <span class="tl-dot tl-red me-1"></span>Красный порог
+            </label>
+            <input type="number" name="red_threshold" id="thr-red"
+                   class="form-control fc-dark" min="0" required>
+            <div class="form-text">Остаток ниже этого → критично</div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">
+              <span class="tl-dot tl-yellow me-1"></span>Жёлтый порог
+            </label>
+            <input type="number" name="yellow_threshold" id="thr-yellow"
+                   class="form-control fc-dark" min="0" required>
+            <div class="form-text">Остаток ниже этого → внимание</div>
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg"></i> Сохранить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+<script>
+document.getElementById('thresholdModal').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  document.getElementById('thr-part-name').textContent = btn.dataset.partName;
+  document.getElementById('thr-red').value    = btn.dataset.red;
+  document.getElementById('thr-yellow').value = btn.dataset.yellow;
+  document.getElementById('thresholdForm').action =
+    '/details/' + btn.dataset.partId + '/thresholds';
+});
+</script>
+{% endif %}
+{% endblock %}

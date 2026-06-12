@@ -1780,3 +1780,143 @@ body {
   text-align: center;
   margin-top: 0.3rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   СПРАВОЧНИК ДЕТАЛЕЙ (/details)
+═══════════════════════════════════════════════════════════════ */
+
+/* Строка фильтров */
+.det-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.det-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+.det-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.det-search {
+  padding-left: 2.2rem;
+  padding-right: 2rem;
+}
+.det-search-clear {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.det-search-clear:hover { color: var(--text-primary); }
+.det-eng-filter {
+  display: flex;
+  gap: 0.35rem;
+}
+.det-eng-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  transition: all 0.15s;
+}
+.det-eng-btn:hover,
+.det-eng-btn.active {
+  background: rgba(99,179,237,0.15);
+  border-color: rgba(99,179,237,0.4);
+  color: #63b3ed;
+}
+.det-search-btn {
+  white-space: nowrap;
+}
+
+/* Таблица */
+.det-table {
+  font-size: 0.85rem;
+}
+.det-table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+.det-table tbody td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.det-row:hover td { background: rgba(255,255,255,0.025); }
+
+.det-article {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.det-name { font-weight: 500; }
+.det-eng-badge {
+  font-size: 0.72rem;
+  background: rgba(99,179,237,0.1);
+  color: #63b3ed;
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  white-space: nowrap;
+}
+.det-cell {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.det-qty { font-weight: 700; }
+.det-qty-red    { color: #fc8181; }
+.det-qty-yellow { color: #f6c90e; }
+.det-qty-green  { color: #68d391; }
+
+.det-status-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.det-status-red    { background: rgba(245,101,101,0.15); color: #fc8181; }
+.det-status-yellow { background: rgba(246,201,14,0.12);  color: #f6c90e; }
+.det-status-green  { background: rgba(104,211,145,0.12); color: #68d391; }
+
+.det-edit-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  transition: all 0.15s;
+}
+.det-edit-btn:hover {
+  border-color: rgba(99,179,237,0.4);
+  color: #63b3ed;
+}
+
+/* Легенда */
+.det-legend {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}

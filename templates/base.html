@@ -62,7 +62,10 @@
 
       <!-- Детали — все роли -->
       <li>
-        <a href="#"><i class="bi bi-card-list"></i><span>Детали</span></a>
+        <a href="{{ url_for('details') }}"
+           class="{{ 'active' if request.endpoint == 'details' }}">
+          <i class="bi bi-card-list"></i><span>Детали</span>
+        </a>
       </li>
 
       <!-- Заявки, Журнал — кладовщик и выше -->

@@ -1017,6 +1017,81 @@ def assembly_finish(asm_id):
         done_count=done_count, progress_pct=progress_pct)
 
 
+# ── Справочник деталей ────────────────────────────────────────────────────────
+
+@app.route('/details')
+@login_required
+def details():
+    db  = get_db()
+    q   = request.args.get('q', '').strip()
+    eng = request.args.get('engine', '')
+
+    sql = '''
+        SELECT p.id, p.article, p.name, p.engine_type, p.unit,
+               p.monthly_plan, p.red_threshold, p.yellow_threshold,
+               s.quantity AS stock_qty,
+               sc.cell_code
+        FROM parts p
+        LEFT JOIN stock s  ON s.part_id = p.id
+        LEFT JOIN storage_cells sc ON sc.id = s.cell_id
+        WHERE 1=1
+    '''
+    params = []
+    if q:
+        sql += " AND (p.name LIKE ? OR p.article LIKE ?)"
+        params += [f'%{q}%', f'%{q}%']
+    if eng:
+        sql += " AND p.engine_type = ?"
+        params.append(eng)
+    sql += " ORDER BY p.id"
+
+    rows = db.execute(sql, params).fetchall()
+
+    engine_types = [r['engine_type'] for r in
+                    db.execute("SELECT DISTINCT engine_type FROM parts ORDER BY engine_type").fetchall()]
+
+    parts = []
+    for r in rows:
+        qty   = r['stock_qty'] or 0
+        red   = r['red_threshold'] or 0
+        yel   = r['yellow_threshold'] or 0
+        if qty < red:
+            status = 'red'
+        elif qty < yel:
+            status = 'yellow'
+        else:
+            status = 'green'
+        parts.append({**dict(r), 'stock_qty': qty, 'status': status})
+
+    db.close()
+    return render_template('details.html',
+                           parts=parts, q=q, engine=eng,
+                           engine_types=engine_types)
+
+
+@app.route('/details/<int:part_id>/thresholds', methods=['POST'])
+@login_required
+def details_thresholds(part_id):
+    if ROLE_LEVEL.get(session.get('role'), 0) < ROLE_LEVEL['master']:
+        flash('Недостаточно прав.', 'danger')
+        return redirect(url_for('details'))
+    red = request.form.get('red_threshold', type=int)
+    yel = request.form.get('yellow_threshold', type=int)
+    if red is None or yel is None or red < 0 or yel < red:
+        flash('Некорректные значения порогов.', 'danger')
+        return redirect(url_for('details'))
+    db = get_db()
+    db.execute(
+        'UPDATE parts SET red_threshold=?, yellow_threshold=? WHERE id=?',
+        (red, yel, part_id)
+    )
+    db.commit()
+    db.close()
+    flash('Пороги обновлены.', 'success')
+    return redirect(url_for('details') + (f'?q={request.form.get("back_q","")}'
+                                          if request.form.get('back_q') else ''))
+
+
 # ── Запуск ────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
