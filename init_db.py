@@ -33,11 +33,12 @@ CREATE TABLE IF NOT EXISTS storage_cells (
 );
 
 CREATE TABLE IF NOT EXISTS stock (
-    id         INTEGER PRIMARY KEY,
-    part_id    INTEGER REFERENCES parts(id),
-    cell_id    INTEGER REFERENCES storage_cells(id),
-    quantity   INTEGER DEFAULT 0,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    id           INTEGER PRIMARY KEY,
+    part_id      INTEGER REFERENCES parts(id),
+    cell_id      INTEGER REFERENCES storage_cells(id),
+    quantity     INTEGER DEFAULT 0,
+    max_quantity INTEGER,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS movements (
@@ -180,8 +181,8 @@ def main():
 
         qty = test_quantity(i, red_thr, yellow_thr, monthly_plan)
         conn.execute(
-            "INSERT INTO stock (part_id, cell_id, quantity) VALUES (?, ?, ?)",
-            (part_id, cell_id, qty),
+            "INSERT INTO stock (part_id, cell_id, quantity, max_quantity) VALUES (?, ?, ?, ?)",
+            (part_id, cell_id, qty, monthly_plan),
         )
 
         # Считаем для отчёта

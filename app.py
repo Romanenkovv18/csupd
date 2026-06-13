@@ -12,13 +12,15 @@ from flask import (Flask, flash, redirect, render_template,
                    request, send_file, session, url_for)
 from werkzeug.security import check_password_hash
 
-from db import get_db
+from db import get_db, ensure_migrations
 
 import json as _json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'csupd-dev-secret-2024')
 app.jinja_env.filters['from_json'] = _json.loads
+
+ensure_migrations()
 
 # ── Константы ────────────────────────────────────────────────────────────────
 
