@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>QR — {{ cell_code }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #fff; color: #000; }
+    .qr-wrap { display: inline-block; border: 2px solid #333; border-radius: 12px; padding: 24px 32px; }
+    .cell-code { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 12px 0 4px; }
+    .part-name { font-size: 1rem; color: #555; margin-bottom: 4px; }
+    .article { font-size: 0.85rem; color: #888; font-family: monospace; }
+    img.qr { width: 220px; height: 220px; display: block; margin: 0 auto 8px; }
+    @media print { button { display: none; } body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="qr-wrap">
+    <img class="qr" src="{{ url_for('prikhod_qr', cell_code=cell_code) }}" alt="QR">
+    <div class="cell-code">{{ cell_code }}</div>
+    {% if part_name %}<div class="part-name">{{ part_name }}</div>{% endif %}
+    {% if article %}<div class="article">{{ article }}</div>{% endif %}
+  </div>
+  <br><br>
+  <button onclick="window.print()" style="padding:10px 28px; font-size:1rem; cursor:pointer;">
+    🖨️ Печать
+  </button>
+</body>
+</html>

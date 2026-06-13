@@ -102,6 +102,9 @@
         <th>Этап</th>
         <th>Исполнитель</th>
         <th>Примечание</th>
+        {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+        <th style="width:40px"></th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
@@ -133,6 +136,25 @@
           <td class="small text-muted">{{ m.assembly_stage or '—' }}</td>
           <td class="small">{{ m.operator or '—' }}</td>
           <td class="small text-muted">{{ m.notes or '' }}</td>
+          {% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+          <td>
+            {% if not m.is_cancelled %}
+            <button type="button" class="btn det-edit-btn sett-del-btn"
+                    title="Отменить операцию"
+                    data-bs-toggle="modal" data-bs-target="#cancelModal"
+                    data-mid="{{ m.id }}"
+                    data-mtype="{{ m.operation_type }}"
+                    data-mpart="{{ m.part_name }}"
+                    data-mqty="{{ m.quantity }}">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            {% else %}
+            <span class="text-muted small" title="Отменена">
+              <i class="bi bi-slash-circle"></i>
+            </span>
+            {% endif %}
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       {% else %}
@@ -148,6 +170,35 @@
 </div>
 
 <!-- Пагинация -->
+{% if current_user and current_user.level >= ROLE_LEVEL['master'] %}
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise me-2"></i>Отмена операции</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="cancelForm" action="">
+        <div class="modal-body">
+          <div class="mb-2 small text-muted" id="cancel-info"></div>
+          <div class="mb-1">
+            <label class="form-label">Причина отмены <span class="req">*</span></label>
+            <input type="text" name="reason" class="form-control fc-dark"
+                   placeholder="Укажите причину" required>
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="bi bi-check-lg"></i> Подтвердить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% block scripts %}
 <script>
 (function () {
@@ -159,6 +210,17 @@
     window.location.href = '/journal?' + params.toString();
   });
 })();
+
+var cancelModal = document.getElementById('cancelModal');
+if (cancelModal) {
+  cancelModal.addEventListener('show.bs.modal', function(e) {
+    var btn = e.relatedTarget;
+    document.getElementById('cancel-info').textContent =
+      'Операция #' + btn.dataset.mid + ' · ' + btn.dataset.mtype +
+      ' · ' + btn.dataset.mpart + ' · ' + btn.dataset.mqty + ' шт';
+    document.getElementById('cancelForm').action = '/journal/' + btn.dataset.mid + '/cancel';
+  });
+}
 </script>
 {% endblock %}
 

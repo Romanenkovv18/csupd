@@ -210,6 +210,9 @@ def raskhod():
                 'SELECT s.id, s.quantity, s.cell_id FROM stock s WHERE s.part_id = ?',
                 (part_id,)
             ).fetchone()
+            part_info = db.execute(
+                'SELECT name, article, monthly_plan FROM parts WHERE id = ?', (part_id,)
+            ).fetchone()
 
             if not stock:
                 flash('Деталь не найдена в остатках.', 'danger')
@@ -220,25 +223,44 @@ def raskhod():
                     'danger'
                 )
             else:
+                # Подтверждение крупного списания (>50% месячного плана)
+                monthly = part_info['monthly_plan'] if part_info else 0
+                confirmed = request.form.get('large_confirmed') == '1'
+                if monthly and quantity > monthly * 0.5 and not confirmed:
+                    pct = round(quantity / monthly * 100)
+                    db.close()
+                    return render_template('raskhod_confirm.html',
+                        part_name=part_info['name'],
+                        article=part_info['article'],
+                        quantity=quantity,
+                        monthly_plan=monthly,
+                        pct=pct,
+                        form=request.form,
+                    )
                 db.execute(
                     'UPDATE stock SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP '
                     'WHERE id = ?',
                     (quantity, stock['id'])
                 )
-                db.execute(
+                mov_id = db.execute(
                     'INSERT INTO movements '
                     '(part_id, cell_id, operation_type, quantity, '
                     'engine_number, assembly_stage, operator) '
                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
                     (part_id, stock['cell_id'], 'расход',
                      quantity, engine_number, assembly_stage, operator)
+                ).lastrowid
+                # audit_log
+                db.execute(
+                    'INSERT INTO audit_log (table_name, record_id, action, new_value, changed_by, ip_address) '
+                    'VALUES (?, ?, ?, ?, ?, ?)',
+                    ('movements', mov_id, 'INSERT',
+                     f'{{"qty":{quantity},"part_id":{part_id},"engine":"{engine_number}"}}',
+                     session.get('username', ''), request.remote_addr)
                 )
                 db.commit()
-                part = db.execute(
-                    'SELECT name, article FROM parts WHERE id = ?', (part_id,)
-                ).fetchone()
                 flash(
-                    f'Расход зафиксирован: {part["name"]} ({part["article"]}) — '
+                    f'Расход зафиксирован: {part_info["name"]} ({part_info["article"]}) — '
                     f'{quantity} шт. · двигатель {engine_number}',
                     'success'
                 )
@@ -316,12 +338,17 @@ def prikhod():
             part = db.execute(
                 'SELECT name, article FROM parts WHERE id = ?', (part_id,)
             ).fetchone()
-            flash(
-                f'Приход зафиксирован: {part["name"]} ({part["article"]}) — {quantity} шт.',
-                'success'
-            )
+            cell_code = db.execute(
+                'SELECT cell_code FROM storage_cells WHERE id = ?', (target_cell_id,)
+            ).fetchone()
             db.close()
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('prikhod_success',
+                part_id=part_id,
+                quantity=quantity,
+                part_name=part['name'],
+                article=part['article'],
+                cell_code=cell_code['cell_code'] if cell_code else ''
+            ))
 
     parts = db.execute('''
         SELECT p.id, p.article, p.name, p.unit,
@@ -345,6 +372,121 @@ def prikhod():
         selected_part_id=selected_part_id,
         current_operator=session.get('full_name') or session.get('username', ''),
     )
+
+
+@app.route('/prikhod/success')
+@role_required('kladovshik')
+def prikhod_success():
+    return render_template('prikhod_success.html',
+        part_id=request.args.get('part_id', ''),
+        quantity=request.args.get('quantity', ''),
+        part_name=request.args.get('part_name', ''),
+        article=request.args.get('article', ''),
+        cell_code=request.args.get('cell_code', ''),
+    )
+
+
+@app.route('/prikhod/print-qr/<path:cell_code>')
+@role_required('kladovshik')
+def prikhod_print_qr(cell_code):
+    db = get_db()
+    part = db.execute('''
+        SELECT p.name, p.article FROM parts p
+        JOIN stock s ON s.part_id = p.id
+        JOIN storage_cells sc ON sc.id = s.cell_id
+        WHERE sc.cell_code = ?
+        LIMIT 1
+    ''', (cell_code,)).fetchone()
+    db.close()
+    return render_template('prikhod_qr_print.html',
+        cell_code=cell_code,
+        part_name=part['name'] if part else '',
+        article=part['article'] if part else '',
+    )
+
+
+@app.route('/prikhod/qr/<path:cell_code>')
+@role_required('kladovshik')
+def prikhod_qr(cell_code):
+    import qrcode
+    qr_data = f'ЦСУПД:ЯЧЕЙКА:{cell_code}'
+    db = get_db()
+    part = db.execute('''
+        SELECT p.article FROM parts p
+        JOIN stock s ON s.part_id = p.id
+        JOIN storage_cells sc ON sc.id = s.cell_id
+        WHERE sc.cell_code = ?
+        LIMIT 1
+    ''', (cell_code,)).fetchone()
+    db.close()
+    if part:
+        qr_data += f':ДЕТАЛЬ:{part["article"]}'
+    img = qrcode.make(qr_data)
+    buf = BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
+
+# ── API: поиск деталей ───────────────────────────────────────────────────────
+
+from flask import jsonify
+
+@app.route('/api/parts/search')
+@login_required
+def api_parts_search():
+    q        = request.args.get('q', '').strip()
+    by       = request.args.get('type', 'name')  # name | article | cell | category
+    db       = get_db()
+
+    if by == 'cell':
+        rows = db.execute('''
+            SELECT p.id, p.article, p.name, p.unit, p.category,
+                   s.quantity, sc.cell_code
+            FROM parts p
+            JOIN stock s ON s.part_id = p.id
+            JOIN storage_cells sc ON sc.id = s.cell_id
+            WHERE sc.cell_code LIKE ?
+            ORDER BY sc.cell_code
+        ''', (f'%{q}%',)).fetchall()
+    elif by == 'category':
+        rows = db.execute('''
+            SELECT p.id, p.article, p.name, p.unit, p.category,
+                   s.quantity, sc.cell_code
+            FROM parts p
+            JOIN stock s ON s.part_id = p.id
+            LEFT JOIN storage_cells sc ON sc.id = s.cell_id
+            WHERE p.category = ?
+            ORDER BY p.name
+        ''', (q,)).fetchall()
+    elif by == 'qr':
+        # Парсим строку вида ЦСУПД:ЯЧЕЙКА:С1-П1-Я1:ДЕТАЛЬ:0080004096
+        article = ''
+        parts_qr = q.split(':')
+        for i, seg in enumerate(parts_qr):
+            if seg.upper() == 'ДЕТАЛЬ' and i + 1 < len(parts_qr):
+                article = parts_qr[i + 1]
+        rows = db.execute('''
+            SELECT p.id, p.article, p.name, p.unit, p.category,
+                   s.quantity, sc.cell_code
+            FROM parts p
+            JOIN stock s ON s.part_id = p.id
+            LEFT JOIN storage_cells sc ON sc.id = s.cell_id
+            WHERE p.article = ?
+        ''', (article,)).fetchall()
+    else:
+        rows = db.execute('''
+            SELECT p.id, p.article, p.name, p.unit, p.category,
+                   s.quantity, sc.cell_code
+            FROM parts p
+            JOIN stock s ON s.part_id = p.id
+            LEFT JOIN storage_cells sc ON sc.id = s.cell_id
+            WHERE p.name LIKE ? OR p.article LIKE ?
+            ORDER BY p.name
+        ''', (f'%{q}%', f'%{q}%')).fetchall()
+
+    db.close()
+    return jsonify([dict(r) for r in rows])
 
 
 # ── Заявки на пополнение ──────────────────────────────────────────────────────
@@ -483,6 +625,7 @@ def journal():
     movements = db.execute(f'''
         SELECT m.id, m.operation_type, m.quantity, m.engine_number,
                m.assembly_stage, m.operator, m.created_at, m.notes,
+               m.is_cancelled, m.cancel_reason,
                p.name AS part_name, p.article, p.unit,
                sc.cell_code
         FROM movements m
@@ -506,6 +649,53 @@ def journal():
         date_from=date_from,
         date_to=date_to,
     )
+
+
+# ── Отмена операции ──────────────────────────────────────────────────────────
+
+@app.route('/journal/<int:mid>/cancel', methods=['POST'])
+@login_required
+def journal_cancel(mid):
+    if ROLE_LEVEL.get(session.get('role'), 0) < ROLE_LEVEL['master']:
+        flash('Недостаточно прав для отмены операций.', 'danger')
+        return redirect(url_for('journal'))
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash('Укажите причину отмены.', 'danger')
+        return redirect(url_for('journal'))
+    db = get_db()
+    mov = db.execute(
+        'SELECT * FROM movements WHERE id = ? AND is_cancelled = 0', (mid,)
+    ).fetchone()
+    if not mov:
+        flash('Операция не найдена или уже отменена.', 'danger')
+        db.close()
+        return redirect(url_for('journal'))
+    # Откатываем остаток
+    if mov['operation_type'] == 'расход':
+        db.execute('UPDATE stock SET quantity = quantity + ? WHERE part_id = ?',
+                   (mov['quantity'], mov['part_id']))
+    elif mov['operation_type'] == 'приход':
+        db.execute('UPDATE stock SET quantity = MAX(0, quantity - ?) WHERE part_id = ?',
+                   (mov['quantity'], mov['part_id']))
+    # Помечаем запись отменённой
+    cancelled_by = session.get('full_name') or session.get('username', '')
+    db.execute(
+        'UPDATE movements SET is_cancelled=1, cancel_reason=?, cancelled_by=?, cancelled_at=CURRENT_TIMESTAMP '
+        'WHERE id=?',
+        (reason, cancelled_by, mid)
+    )
+    db.execute(
+        'INSERT INTO audit_log (table_name, record_id, action, old_value, changed_by, ip_address) '
+        'VALUES (?, ?, ?, ?, ?, ?)',
+        ('movements', mid, 'CANCEL',
+         f'{{"op":"{mov["operation_type"]}","qty":{mov["quantity"]},"reason":"{reason}"}}',
+         session.get('username', ''), request.remote_addr)
+    )
+    db.commit()
+    db.close()
+    flash(f'Операция #{mid} отменена. Остаток скорректирован.', 'success')
+    return redirect(url_for('journal'))
 
 
 # ── Экспорт в Excel ───────────────────────────────────────────────────────────
