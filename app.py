@@ -20,6 +20,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'csupd-dev-secret-2024')
 app.jinja_env.filters['from_json'] = _json.loads
 
+@app.template_filter('format_date')
+def format_date(s):
+    if not s: return ''
+    s = str(s)[:10]
+    return f'{s[8:10]}.{s[5:7]}.{s[:4]}'
+
 ensure_migrations()
 
 # ── Константы ────────────────────────────────────────────────────────────────
@@ -152,7 +158,7 @@ def dashboard():
     if q:
         sql += ' WHERE (p.name LIKE ? OR p.article LIKE ?)'
         params = [f'%{q}%', f'%{q}%']
-    sql += ' ORDER BY sort_order, p.name'
+    sql += ' ORDER BY sort_order, s.quantity ASC'
 
     parts = db.execute(sql, params).fetchall()
 
@@ -341,6 +347,13 @@ def prikhod():
                     '(part_id, cell_id, operation_type, quantity, operator, notes) '
                     'VALUES (?, ?, ?, ?, ?, ?)',
                     (part_id, target_cell_id, 'приход', quantity, operator, notes or None)
+                )
+                # Авто-закрытие открытых заявок на эту деталь
+                db.execute(
+                    '''UPDATE replenishment_requests
+                       SET status = 'Выполнена', completed_at = CURRENT_TIMESTAMP
+                       WHERE part_id = ? AND status IN ('Создана', 'В работе')''',
+                    (part_id,)
                 )
                 db.commit()
                 part = db.execute(
@@ -558,7 +571,7 @@ def zayavki_create():
 @role_required('kladovshik')
 def zayavki_update(req_id):
     new_status = request.form.get('status', '')
-    if new_status not in ('В работе', 'Выполнена'):
+    if new_status not in ('В работе',):
         flash('Недопустимый статус.', 'danger')
         return redirect(url_for('zayavki'))
 

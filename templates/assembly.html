@@ -27,7 +27,7 @@
       <div class="asm-card-body">
         <div class="asm-type-label">{{ a.engine_type }}</div>
         <div class="asm-progress-info">
-          <span>Операция {{ a.current_stage }} из {{ a.total_stages }}</span>
+          <span>Операция {{ [a.current_stage, a.total_stages]|min }} из {{ a.total_stages }}</span>
           <span class="fw-600">{{ pct }}%</span>
         </div>
         <div class="progress asm-progress mb-2">
@@ -35,7 +35,7 @@
                style="width:{{ pct }}%"></div>
         </div>
         <div class="asm-meta-row">
-          <i class="bi bi-calendar3"></i> {{ a.started_at[:10] }}
+          <i class="bi bi-calendar3"></i> {{ a.started_at | format_date }}
           &nbsp;·&nbsp;
           <i class="bi bi-person"></i> {{ a.assembler }}
         </div>

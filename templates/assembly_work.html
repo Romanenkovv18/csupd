@@ -104,7 +104,7 @@
       </div>
       <div class="asm-info-block">
         <div class="asm-info-label">Начало сборки</div>
-        <div class="asm-info-val">{{ asm.started_at[:10] }}</div>
+        <div class="asm-info-val">{{ asm.started_at | format_date }}</div>
       </div>
       <div class="asm-info-block">
         <div class="asm-info-label">Сборщик</div>

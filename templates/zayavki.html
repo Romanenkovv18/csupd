@@ -59,7 +59,7 @@
         <tr class="zrow zrow-{{ r.status | lower | replace(' ', '-') }}">
           <td class="text-muted small">{{ r.id }}</td>
           <td class="small">
-            <span class="dt-date">{{ r.created_at[:10] }}</span>
+            <span class="dt-date">{{ r.created_at | format_date }}</span>
             <span class="dt-time">{{ r.created_at[11:16] }}</span>
           </td>
           <td>{{ r.part_name }}</td>
@@ -84,19 +84,13 @@
                 </button>
               </form>
             {% elif r.status == 'В работе' %}
-              <form method="post"
-                    action="{{ url_for('zayavki_update', req_id=r.id) }}"
-                    style="display:inline">
-                <input type="hidden" name="status" value="Выполнена">
-                <button type="submit" class="btn-status-action btn-done"
-                        title="Отметить выполненной">
-                  <i class="bi bi-check-circle"></i> Выполнена
-                </button>
-              </form>
+              <span class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>Выполняется при приходе
+              </span>
             {% else %}
               <span class="text-muted small">
                 <i class="bi bi-check-all"></i>
-                {% if r.completed_at %}{{ r.completed_at[:10] }}{% endif %}
+                {% if r.completed_at %}{{ r.completed_at | format_date }}{% endif %}
               </span>
             {% endif %}
           </td>

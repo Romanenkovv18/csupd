@@ -40,12 +40,12 @@
       <div class="asm-fstat-lbl">всего операций</div>
     </div>
     <div class="asm-fstat">
-      <div class="asm-fstat-val">{{ asm.started_at[:10] }}</div>
+      <div class="asm-fstat-val">{{ asm.started_at | format_date }}</div>
       <div class="asm-fstat-lbl">начало сборки</div>
     </div>
     {% if asm.completed_at %}
     <div class="asm-fstat">
-      <div class="asm-fstat-val">{{ asm.completed_at[:10] }}</div>
+      <div class="asm-fstat-val">{{ asm.completed_at | format_date }}</div>
       <div class="asm-fstat-lbl">дата завершения</div>
     </div>
     {% endif %}
@@ -82,7 +82,7 @@
         <div class="asm-finish-op-meta">
           <i class="bi bi-person-fill me-1"></i>{{ hist.assembler }}
           &nbsp;·&nbsp;
-          <i class="bi bi-calendar3 me-1"></i>{{ hist.completed_at[:10] }}
+          <i class="bi bi-calendar3 me-1"></i>{{ hist.completed_at | format_date }}
         </div>
         {% endif %}
       </div>
