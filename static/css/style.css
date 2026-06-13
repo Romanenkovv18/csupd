@@ -2180,6 +2180,15 @@ select.fc-dark:focus,
 }
 .shelf-cell-placeholder { opacity: 0.2; cursor: default; }
 
+/* Прогресс-бар заполненности ячейки */
+.cell-fill-wrap  { display: flex; flex-direction: column; gap: 3px; }
+.cell-fill-bar   { height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+.cell-fill-inner { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.cell-fill-green  { background: var(--green, #48bb78); }
+.cell-fill-yellow { background: var(--yellow, #f0b429); }
+.cell-fill-red    { background: var(--red, #fc8181); }
+.cell-fill-label  { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+
 /* Мини-ячейка для легенды */
 .shelf-cell-mini {
   display: inline-flex;

@@ -33,27 +33,57 @@
         </div>
         <select name="part_id" id="part_id"
                 class="form-select fc-dark part-select"
-                size="7" required>
+                size="6" required>
           {% for p in parts %}
           <option value="{{ p.id }}"
                   data-qty="{{ p.quantity }}"
+                  data-max="{{ p.max_quantity or 0 }}"
                   data-unit="{{ p.unit }}"
                   data-name="{{ p.name }}"
                   data-article="{{ p.article }}"
-                  data-cell-id="{{ p.cell_id }}"
-                  data-cell-code="{{ p.cell_code }}"
+                  data-cell="{{ p.cell_code }}"
                   {{ 'selected' if (form and form.part_id == p.id|string) or (not form.part_id and selected_part_id == p.id|string) else '' }}>
-            {{ p.article }} — {{ p.name }} ({{ p.quantity }} {{ p.unit }}, {{ p.cell_code }})
+            {{ p.article }} — {{ p.name }} ({{ p.quantity }} {{ p.unit }})
           </option>
           {% endfor %}
         </select>
-        <div id="part-stock-hint" class="form-hint mt-1">Выберите деталь из списка</div>
+
+        <!-- Карточка детали -->
+        <div id="part-info-card" class="mt-3" style="display:none">
+          <div class="row g-2 text-sm">
+            <div class="col-6 col-md-4">
+              <div class="text-muted small">Артикул</div>
+              <div class="fw-600 mono" id="pi-article">—</div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="text-muted small">Ячейка</div>
+              <div><span class="cell-badge" id="pi-cell">—</span></div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="text-muted small">Текущий остаток</div>
+              <div class="fw-600" id="pi-qty">—</div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="text-muted small">Максимум ячейки</div>
+              <div class="fw-600" id="pi-max">—</div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="text-muted small">Свободно</div>
+              <div class="fw-600" id="pi-free">—</div>
+            </div>
+          </div>
+          <div id="pi-full-warn" class="mt-2" style="display:none">
+            <span class="det-status-badge det-status-red">
+              <i class="bi bi-x-circle me-1"></i>Ячейка заполнена
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- 2. Количество, ячейка, исполнитель -->
-      <div class="form-card mb-3">
+      <!-- 2. Количество и исполнитель -->
+      <div class="form-card mb-4">
         <div class="form-section-title">
-          <span class="step-badge step-badge-green">2</span> Количество, ячейка и исполнитель
+          <span class="step-badge step-badge-green">2</span> Количество и исполнитель
         </div>
         <div class="row g-3 mt-0">
 
@@ -65,20 +95,7 @@
                      min="1" value="{{ form.quantity if form else 1 }}" required>
               <span class="input-group-text igt-dark" id="unit-label">шт</span>
             </div>
-          </div>
-
-          <div class="col-sm-4">
-            <label class="form-label">Ячейка хранения</label>
-            <select name="cell_id" id="cell_id" class="form-select fc-dark">
-              <option value="">— текущая ячейка —</option>
-              {% for c in cells %}
-              <option value="{{ c.id }}"
-                {{ 'selected' if form and form.cell_id == c.id|string else '' }}>
-                {{ c.cell_code }}
-              </option>
-              {% endfor %}
-            </select>
-            <div id="cell-hint" class="form-hint mt-1">Авто: ячейка детали</div>
+            <div id="qty-hint" class="form-hint mt-1"></div>
           </div>
 
           <div class="col-sm-4">
@@ -148,7 +165,15 @@
         </div>
         <div class="confirm-row">
           <span class="cl">Станет</span>
-          <span class="cv fw-bold" id="c-after" style="color:var(--green)">—</span>
+          <span class="cv fw-bold" id="c-after">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="cl">Ёмкость ячейки</span>
+          <span class="cv" id="c-max">—</span>
+        </div>
+        <div id="c-overflow-warn" class="confirm-warn" style="display:none">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          Превышение ёмкости ячейки!
         </div>
       </div>
     </div>
@@ -160,13 +185,12 @@
 {% block scripts %}
 <script>
 (function () {
-  const partSelect    = document.getElementById('part_id');
-  const partSearch    = document.getElementById('part-search');
-  const qtyInput      = document.getElementById('quantity');
-  const cellSelect    = document.getElementById('cell_id');
-  const submitBtn     = document.getElementById('submit-btn');
+  const partSelect = document.getElementById('part_id');
+  const partSearch = document.getElementById('part-search');
+  const qtyInput   = document.getElementById('quantity');
+  const submitBtn  = document.getElementById('submit-btn');
 
-  // ── Фильтрация списка деталей ───────────────────────────────
+  // ── Фильтрация списка ───────────────────────────────────────
   partSearch.addEventListener('input', function () {
     const q = this.value.toLowerCase();
     Array.from(partSelect.options).forEach(opt => {
@@ -174,67 +198,89 @@
     });
   });
 
-  // ── При выборе детали — подставить её ячейку ───────────────
+  // ── При выборе детали ────────────────────────────────────────
   partSelect.addEventListener('change', function () {
     const opt = this.options[this.selectedIndex];
-    if (!this.value || !opt) return;
+    if (!this.value || !opt) { hideInfo(); return; }
 
-    const cellId   = opt.dataset.cellId;
-    const cellCode = opt.dataset.cellCode;
-
-    // Авто-выбор ячейки в селекте
-    Array.from(cellSelect.options).forEach(co => {
-      if (co.value === cellId) co.selected = true;
-    });
-    document.getElementById('cell-hint').textContent =
-      'По умолчанию: ' + cellCode;
-
-    // Подсказка об остатке
+    const qty  = parseInt(opt.dataset.qty)  || 0;
+    const max  = parseInt(opt.dataset.max)  || 0;
+    const free = Math.max(0, max - qty);
     const unit = opt.dataset.unit;
-    const qty  = opt.dataset.qty;
-    document.getElementById('part-stock-hint').innerHTML =
-      'Текущий остаток: <strong style="color:var(--accent)">'
-      + qty + ' ' + unit + '</strong>';
+
+    // Карточка детали
+    document.getElementById('part-info-card').style.display = '';
+    document.getElementById('pi-article').textContent = opt.dataset.article;
+    document.getElementById('pi-cell').textContent    = opt.dataset.cell || '—';
+    document.getElementById('pi-qty').textContent     = qty + ' ' + unit;
+    document.getElementById('pi-max').textContent     = max ? (max + ' ' + unit) : '—';
+    document.getElementById('pi-free').innerHTML =
+      free > 0
+        ? '<span style="color:var(--green)">' + free + ' ' + unit + '</span>'
+        : '<span style="color:var(--red)">0 ' + unit + '</span>';
+
+    const isFull = max > 0 && qty >= max;
+    document.getElementById('pi-full-warn').style.display = isFull ? '' : 'none';
+
+    // Автозаполнение количества
+    if (max > 0) {
+      qtyInput.value = free > 0 ? free : 0;
+      qtyInput.max   = free;
+    } else {
+      qtyInput.removeAttribute('max');
+    }
     document.getElementById('unit-label').textContent = unit;
+    document.getElementById('qty-hint').textContent =
+      max > 0 ? 'Макс. к приходу: ' + free + ' ' + unit + ' (до заполнения ячейки)' : '';
 
     refresh();
   });
 
-  // ── Обновление панели ───────────────────────────────────────
-  [qtyInput, cellSelect].forEach(el => el.addEventListener('change', refresh));
   qtyInput.addEventListener('input', refresh);
 
   function refresh() {
-    const opt     = partSelect.options[partSelect.selectedIndex];
-    const haspart = partSelect.value && opt;
-    if (!haspart) return;
+    const opt = partSelect.options[partSelect.selectedIndex];
+    if (!partSelect.value || !opt) { hideInfo(); return; }
 
-    const qty      = parseInt(qtyInput.value) || 0;
-    const stock    = parseInt(opt.dataset.qty);
-    const unit     = opt.dataset.unit;
-    const cellOpt  = cellSelect.options[cellSelect.selectedIndex];
-    const cellCode = (cellOpt && cellOpt.value)
-                   ? cellOpt.text
-                   : opt.dataset.cellCode;
+    const qty  = parseInt(opt.dataset.qty) || 0;
+    const max  = parseInt(opt.dataset.max) || 0;
+    const free = Math.max(0, max - qty);
+    const unit = opt.dataset.unit;
+    const add  = parseInt(qtyInput.value) || 0;
 
-    const allFilled = qty > 0;
+    document.getElementById('confirm-empty').style.display = add > 0 ? 'none' : '';
+    document.getElementById('confirm-body').style.display  = add > 0 ? '' : 'none';
 
-    document.getElementById('confirm-empty').style.display = allFilled ? 'none' : '';
-    document.getElementById('confirm-body').style.display  = allFilled ? '' : 'none';
+    if (add > 0) {
+      const after    = qty + add;
+      const overflow = max > 0 && after > max;
 
-    if (allFilled) {
       document.getElementById('c-name').textContent    = opt.dataset.name;
       document.getElementById('c-article').textContent = opt.dataset.article;
-      document.getElementById('c-cell').textContent    = cellCode;
-      document.getElementById('c-current').textContent = stock + ' ' + unit;
-      document.getElementById('c-qty').textContent     = '+' + qty + ' ' + unit;
-      document.getElementById('c-after').textContent   = (stock + qty) + ' ' + unit;
-    }
+      document.getElementById('c-cell').textContent    = opt.dataset.cell || '—';
+      document.getElementById('c-current').textContent = qty + ' ' + unit;
+      document.getElementById('c-qty').textContent     = '+' + add + ' ' + unit;
+      document.getElementById('c-max').textContent     = max ? (max + ' ' + unit) : '—';
 
-    submitBtn.disabled = !(qty > 0 && partSelect.value);
+      const afterEl = document.getElementById('c-after');
+      afterEl.textContent = after + ' ' + unit;
+      afterEl.style.color = overflow ? 'var(--red)' : 'var(--green)';
+
+      document.getElementById('c-overflow-warn').style.display = overflow ? '' : 'none';
+      submitBtn.disabled = overflow || (max > 0 && qty >= max);
+    } else {
+      submitBtn.disabled = true;
+    }
   }
 
-  // ── Предвыбор детали из URL-параметра (?part_id=) ──────────
+  function hideInfo() {
+    document.getElementById('part-info-card').style.display = 'none';
+    document.getElementById('confirm-empty').style.display  = '';
+    document.getElementById('confirm-body').style.display   = 'none';
+    submitBtn.disabled = true;
+  }
+
+  // ── Предвыбор из URL ─────────────────────────────────────────
   {% if selected_part_id %}
   (function() {
     const pid = "{{ selected_part_id }}";
@@ -247,7 +293,8 @@
   })();
   {% endif %}
 
-  refresh();
+  // Запустить при загрузке
+  if (partSelect.value) partSelect.dispatchEvent(new Event('change'));
 })();
 </script>
 {% endblock %}

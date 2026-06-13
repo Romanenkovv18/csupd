@@ -142,6 +142,7 @@
                         data-part-unit="{{ p.unit }}"
                         data-current-qty="{{ p.quantity }}"
                         data-monthly-plan="{{ p.monthly_plan }}"
+                        data-max-quantity="{{ p.max_quantity or p.monthly_plan or 0 }}"
                         data-operator="{{ current_user.full_name or current_user.username }}">
                   <i class="bi bi-cart-plus"></i>
                 </button>
@@ -275,6 +276,9 @@
     const currentQty  = parseInt(btn.dataset.currentQty);
     const monthlyPlan = parseInt(btn.dataset.monthlyPlan);
 
+    const maxQty  = parseInt(btn.dataset.maxQuantity) || 0;
+    const free    = maxQty > 0 ? Math.max(0, maxQty - currentQty) : 0;
+
     document.getElementById('modal-part-id').value       = partId;
     document.getElementById('modal-article').textContent = partArticle;
     document.getElementById('modal-name').textContent    = partName;
@@ -283,11 +287,19 @@
     var opName = btn.dataset.operator;
     if (opName) document.getElementById('modal-operator-name').textContent = opName;
 
-    // Рекомендуемое количество = месячный план
-    const suggested = monthlyPlan || 1;
-    document.getElementById('modal-quantity').value = suggested;
-    document.getElementById('modal-hint').textContent =
-      'Рекомендуется: ' + suggested + ' ' + partUnit + ' (месячный план)';
+    // Количество = max - current (до заполнения ячейки)
+    const qtyInput = document.getElementById('modal-quantity');
+    const suggested = free > 0 ? free : (monthlyPlan || 1);
+    qtyInput.value = suggested;
+    if (maxQty > 0) {
+      qtyInput.max = free;
+    } else {
+      qtyInput.removeAttribute('max');
+    }
+    const hintText = maxQty > 0
+      ? 'Рекомендуется: ' + free + ' ' + partUnit + ' (до заполнения ячейки)'
+      : 'Рекомендуется: ' + (monthlyPlan || 1) + ' ' + partUnit + ' (месячный план)';
+    document.getElementById('modal-hint').textContent = hintText;
   });
 
   // Bootstrap tooltips для кнопок с title (не конфликтующих с modal)

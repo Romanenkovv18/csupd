@@ -69,7 +69,7 @@
           {% for c in level_cells %}
           <div class="shelf-cell shelf-cell-{{ c.status }}"
                data-bs-toggle="tooltip"
-               title="{{ c.cell_code }}{% if c.part_name %} · {{ c.part_name }} ({{ c.quantity }} {{ c.unit }}){% endif %}">
+               title="{{ c.cell_code }}{% if c.part_name %} · {{ c.part_name }} · {{ c.quantity }}/{{ c.max_quantity or '?' }} {{ c.unit }}{% if c.fill_pct is not none %} ({{ c.fill_pct }}%){% endif %}{% endif %}">
             <div class="shelf-cell-code">{{ c.cell_number }}</div>
             {% if c.quantity > 0 %}
             <div class="shelf-cell-qty">{{ c.quantity }}</div>
@@ -110,6 +110,7 @@
         <th class="text-end">Остаток</th>
         <th>Ед.</th>
         <th>Статус</th>
+        <th style="min-width:130px">Заполненность</th>
       </tr>
     </thead>
     <tbody>
@@ -138,6 +139,22 @@
             <span class="det-status-badge det-status-green">Норма</span>
           {% else %}
             <span class="text-muted small">Свободна</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if c.fill_pct is not none %}
+          <div class="cell-fill-wrap">
+            <div class="cell-fill-bar">
+              <div class="cell-fill-inner cell-fill-{{ c.fill_color }}"
+                   style="width:{{ [c.fill_pct, 100]|min }}%"></div>
+            </div>
+            <div class="cell-fill-label">
+              {{ c.quantity }}&thinsp;/&thinsp;{{ c.max_quantity }}&thinsp;{{ c.unit or 'шт' }}
+              <span class="text-muted">({{ c.fill_pct }}%)</span>
+            </div>
+          </div>
+          {% else %}
+          <span class="text-muted small">—</span>
           {% endif %}
         </td>
       </tr>

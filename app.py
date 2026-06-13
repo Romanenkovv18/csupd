@@ -133,7 +133,7 @@ def dashboard():
     sql = '''
         SELECT p.id, p.article, p.name, p.engine_type, p.unit,
                p.monthly_plan, p.red_threshold, p.yellow_threshold,
-               s.quantity, sc.cell_code,
+               s.quantity, s.max_quantity, sc.cell_code,
                CASE
                  WHEN s.quantity < p.red_threshold   THEN 'red'
                  WHEN s.quantity < p.yellow_threshold THEN 'yellow'
@@ -295,7 +295,6 @@ def prikhod():
     if request.method == 'POST':
         part_id      = request.form.get('part_id', '').strip()
         quantity_raw = request.form.get('quantity', '').strip()
-        cell_id      = request.form.get('cell_id', '').strip()
         operator     = session.get('full_name') or session.get('username', '')
         notes        = request.form.get('notes', '').strip()
 
@@ -310,64 +309,68 @@ def prikhod():
         else:
             quantity = int(quantity_raw)
             stock = db.execute(
-                'SELECT s.id, s.quantity, s.cell_id FROM stock s WHERE s.part_id = ?',
+                'SELECT s.id, s.quantity, s.cell_id, s.max_quantity FROM stock s WHERE s.part_id = ?',
                 (part_id,)
             ).fetchone()
 
-            target_cell_id = int(cell_id) if cell_id else (stock['cell_id'] if stock else None)
+            target_cell_id = stock['cell_id'] if stock else None
+            max_qty        = stock['max_quantity'] if stock and stock['max_quantity'] else None
 
-            if stock:
-                db.execute(
-                    'UPDATE stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP '
-                    'WHERE id = ?',
-                    (quantity, stock['id'])
+            # Валидация ёмкости ячейки
+            if max_qty is not None and stock and stock['quantity'] + quantity > max_qty:
+                free = max(0, max_qty - stock['quantity'])
+                flash(
+                    f'Превышение ёмкости ячейки. Максимум {max_qty} шт, '
+                    f'сейчас {stock["quantity"]} шт, можно добавить {free} шт.',
+                    'danger'
                 )
             else:
+                if stock:
+                    db.execute(
+                        'UPDATE stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP '
+                        'WHERE id = ?',
+                        (quantity, stock['id'])
+                    )
+                else:
+                    db.execute(
+                        'INSERT INTO stock (part_id, cell_id, quantity) VALUES (?, ?, ?)',
+                        (part_id, target_cell_id, quantity)
+                    )
                 db.execute(
-                    'INSERT INTO stock (part_id, cell_id, quantity) VALUES (?, ?, ?)',
-                    (part_id, target_cell_id, quantity)
+                    'INSERT INTO movements '
+                    '(part_id, cell_id, operation_type, quantity, operator, notes) '
+                    'VALUES (?, ?, ?, ?, ?, ?)',
+                    (part_id, target_cell_id, 'приход', quantity, operator, notes or None)
                 )
-
-            db.execute(
-                'INSERT INTO movements '
-                '(part_id, cell_id, operation_type, quantity, operator, notes) '
-                'VALUES (?, ?, ?, ?, ?, ?)',
-                (part_id, target_cell_id, 'приход', quantity, operator, notes or None)
-            )
-            db.commit()
-            part = db.execute(
-                'SELECT name, article FROM parts WHERE id = ?', (part_id,)
-            ).fetchone()
-            cell_code = db.execute(
-                'SELECT cell_code FROM storage_cells WHERE id = ?', (target_cell_id,)
-            ).fetchone()
-            db.close()
-            return redirect(url_for('prikhod_success',
-                part_id=part_id,
-                quantity=quantity,
-                part_name=part['name'],
-                article=part['article'],
-                cell_code=cell_code['cell_code'] if cell_code else ''
-            ))
+                db.commit()
+                part = db.execute(
+                    'SELECT name, article FROM parts WHERE id = ?', (part_id,)
+                ).fetchone()
+                cell_code = db.execute(
+                    'SELECT cell_code FROM storage_cells WHERE id = ?', (target_cell_id,)
+                ).fetchone()
+                db.close()
+                return redirect(url_for('prikhod_success',
+                    part_id=part_id,
+                    quantity=quantity,
+                    part_name=part['name'],
+                    article=part['article'],
+                    cell_code=cell_code['cell_code'] if cell_code else ''
+                ))
 
     parts = db.execute('''
         SELECT p.id, p.article, p.name, p.unit,
-               s.quantity, s.cell_id, sc.cell_code
+               s.quantity, s.cell_id, s.max_quantity, sc.cell_code
         FROM parts p
         JOIN stock s  ON s.part_id = p.id
         JOIN storage_cells sc ON sc.id = s.cell_id
         ORDER BY p.name
     ''').fetchall()
 
-    cells = db.execute(
-        'SELECT id, cell_code FROM storage_cells ORDER BY cell_code'
-    ).fetchall()
-
     selected_part_id = request.args.get('part_id', '')
     db.close()
     return render_template('prikhod.html',
         parts=parts,
-        cells=cells,
         form=request.form,
         selected_part_id=selected_part_id,
         current_operator=session.get('full_name') or session.get('username', ''),
@@ -1542,7 +1545,8 @@ def cells():
         SELECT sc.id, sc.cell_code, sc.shelf_number, sc.level_number, sc.cell_number,
                p.id AS part_id, p.name AS part_name, p.article,
                p.red_threshold, p.yellow_threshold, p.unit,
-               COALESCE(s.quantity, 0) AS quantity
+               COALESCE(s.quantity, 0) AS quantity,
+               s.max_quantity
         FROM storage_cells sc
         LEFT JOIN stock s  ON s.cell_id  = sc.id
         LEFT JOIN parts p  ON p.id = s.part_id
@@ -1569,7 +1573,18 @@ def cells():
 
     cells_list = []
     for r in rows:
-        cells_list.append({**dict(r), 'status': cell_status(r)})
+        d = dict(r)
+        d['status'] = cell_status(r)
+        max_q = r['max_quantity'] or 0
+        qty   = r['quantity'] or 0
+        if max_q > 0:
+            pct = round(qty / max_q * 100)
+            d['fill_pct'] = pct
+            d['fill_color'] = 'green' if pct > 60 else ('yellow' if pct >= 30 else 'red')
+        else:
+            d['fill_pct']   = None
+            d['fill_color'] = 'empty'
+        cells_list.append(d)
 
     # Группировка для схемы: {shelf: {level: [cell, ...]}}
     grid = {}
