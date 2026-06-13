@@ -35,6 +35,16 @@
         </a>
       </li>
 
+      <!-- Расход — сборщик -->
+      {% if current_user and current_user.role == 'sborshik' %}
+      <li>
+        <a href="{{ url_for('raskhod') }}"
+           class="{{ 'active' if request.endpoint == 'raskhod' }}">
+          <i class="bi bi-box-arrow-up"></i><span>Расход</span>
+        </a>
+      </li>
+      {% endif %}
+
       <!-- Остатки, Приход, Расход, Ячейки, Заявки, Журнал — кладовщик и выше -->
       {% if current_user and current_user.level >= ROLE_LEVEL['kladovshik'] %}
       <li>

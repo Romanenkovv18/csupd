@@ -72,8 +72,8 @@
                     data-name="{{ p.name }}"
                     data-article="{{ p.article }}"
                     {{ 'selected' if form and form.part_id == p.id|string else '' }}>
-              {{ p.article }} — {{ p.name }}
-              {% if p.quantity == 0 %}(нет в наличии){% else %}({{ p.quantity }} {{ p.unit }}){% endif %}
+              {{ p.name }} ({{ p.article }}) — {{ p.cell_code or '—' }} —
+              {% if p.quantity == 0 %}нет в наличии{% else %}{{ p.quantity }} {{ p.unit }}{% endif %}
             </option>
             {% endfor %}
           </select>
@@ -108,7 +108,7 @@
       </div>
 
       <!-- Кнопки -->
-      <div class="d-flex gap-3 justify-content-end">
+      <div class="raskhod-action-bar">
         <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg">
           Отмена
         </a>

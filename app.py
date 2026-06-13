@@ -246,9 +246,11 @@ def raskhod():
                 return redirect(url_for('dashboard'))
 
     parts = db.execute('''
-        SELECT p.id, p.article, p.name, p.unit, s.quantity
+        SELECT p.id, p.article, p.name, p.unit, s.quantity,
+               sc.cell_code
         FROM parts p
         JOIN stock s ON s.part_id = p.id
+        LEFT JOIN storage_cells sc ON sc.id = s.cell_id
         ORDER BY p.name
     ''').fetchall()
 
@@ -1187,6 +1189,29 @@ def settings_stages_delete(sid):
         db.commit()
         flash('Операция удалена.', 'success')
     db.close()
+    return redirect(url_for('settings', tab='stages'))
+
+
+@app.route('/settings/stages/<int:sid>/edit', methods=['POST'])
+@login_required
+def settings_stages_edit(sid):
+    if not _admin_required():
+        return redirect(url_for('dashboard'))
+    engine_type  = request.form.get('engine_type', '').strip()
+    stage_number = request.form.get('stage_number', type=int)
+    stage_name   = request.form.get('stage_name', '').strip()
+    description  = request.form.get('description', '').strip()
+    if not engine_type or not stage_name or not stage_number:
+        flash('Заполните все обязательные поля.', 'danger')
+        return redirect(url_for('settings', tab='stages'))
+    db = get_db()
+    db.execute(
+        "UPDATE assembly_stages SET engine_type=?, stage_number=?, stage_name=?, description=? WHERE id=?",
+        (engine_type, stage_number, stage_name, description or None, sid)
+    )
+    db.commit()
+    db.close()
+    flash(f'Операция «{stage_name}» обновлена.', 'success')
     return redirect(url_for('settings', tab='stages'))
 
 

@@ -197,6 +197,11 @@
   Редактирование порогов · <span class="text-muted">{{ all_parts | length }} позиций</span>
 </div>
 <form method="post" action="{{ url_for('settings_thresholds') }}">
+  <div class="mb-2">
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg"></i> Сохранить все пороги
+    </button>
+  </div>
   <div class="table-responsive">
     <table class="table det-table">
       <thead>
@@ -297,6 +302,15 @@
           <td class="det-name">{{ s.stage_name }}</td>
           <td class="text-muted small">{{ s.description or '—' }}</td>
           <td class="text-end">
+            <button type="button" class="btn det-edit-btn me-1" title="Редактировать"
+                    data-bs-toggle="modal" data-bs-target="#editStageModal"
+                    data-sid="{{ s.id }}"
+                    data-sname="{{ s.stage_name }}"
+                    data-sdesc="{{ s.description or '' }}"
+                    data-snum="{{ s.stage_number }}"
+                    data-set="{{ s.engine_type }}">
+              <i class="bi bi-pencil"></i>
+            </button>
             <form method="post" action="{{ url_for('settings_stages_delete', sid=s.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Удалить операцию «{{ s.stage_name }}»?')">
@@ -312,6 +326,50 @@
   </div>
 </div>
 {% endfor %}
+
+<!-- Модал: редактировать операцию -->
+<div class="modal fade" id="editStageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-dark">
+      <div class="modal-header modal-dark-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Редактировать операцию</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="editStageForm" action="">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Тип двигателя <span class="req">*</span></label>
+            <select name="engine_type" id="edit-engine-type" class="form-select fc-dark" required>
+              <option value="ТВ3-117">ТВ3-117</option>
+              <option value="ТВ2-117">ТВ2-117</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Номер операции <span class="req">*</span></label>
+            <input type="number" name="stage_number" id="edit-stage-number"
+                   class="form-control fc-dark" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Название <span class="req">*</span></label>
+            <input type="text" name="stage_name" id="edit-stage-name"
+                   class="form-control fc-dark" required>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Описание</label>
+            <input type="text" name="description" id="edit-stage-desc"
+                   class="form-control fc-dark">
+          </div>
+        </div>
+        <div class="modal-footer modal-dark-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg"></i> Сохранить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Модал: добавить операцию -->
 <div class="modal fade" id="addStageModal" tabindex="-1" aria-hidden="true">
@@ -378,6 +436,21 @@ if (delModal) {
     document.getElementById('del-uname').textContent = b.dataset.username;
     document.getElementById('delUserForm').action    =
       '/settings/users/' + b.dataset.uid + '/delete';
+  });
+}
+
+/* ── Операции сборки: редактирование ──────────────────────── */
+const editStageModal = document.getElementById('editStageModal');
+if (editStageModal) {
+  editStageModal.addEventListener('show.bs.modal', function(e) {
+    const b = e.relatedTarget;
+    document.getElementById('edit-stage-name').value   = b.dataset.sname;
+    document.getElementById('edit-stage-desc').value   = b.dataset.sdesc;
+    document.getElementById('edit-stage-number').value = b.dataset.snum;
+    const etSel = document.getElementById('edit-engine-type');
+    Array.from(etSel.options).forEach(o => { o.selected = o.value === b.dataset.set; });
+    document.getElementById('editStageForm').action =
+      '/settings/stages/' + b.dataset.sid + '/edit';
   });
 }
 

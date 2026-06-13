@@ -134,6 +134,7 @@
                 <button type="button"
                         class="btn-order {{ 'btn-order-urgent' if p.status in ('red','yellow') else 'btn-order-normal' }}"
                         title="Создать заявку на пополнение"
+                        aria-label="Создать заявку на пополнение"
                         data-bs-toggle="modal" data-bs-target="#orderModal"
                         data-part-id="{{ p.id }}"
                         data-part-name="{{ p.name }}"
@@ -287,6 +288,11 @@
     document.getElementById('modal-quantity').value = suggested;
     document.getElementById('modal-hint').textContent =
       'Рекомендуется: ' + suggested + ' ' + partUnit + ' (месячный план)';
+  });
+
+  // Bootstrap tooltips для кнопок с title (не конфликтующих с modal)
+  document.querySelectorAll('[title]:not([data-bs-toggle="modal"])').forEach(function(el) {
+    new bootstrap.Tooltip(el, { trigger: 'hover' });
   });
 })();
 </script>
