@@ -148,6 +148,20 @@
 </div>
 
 <!-- Пагинация -->
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var params = new URLSearchParams(new FormData(this));
+    window.location.href = '/journal?' + params.toString();
+  });
+})();
+</script>
+{% endblock %}
+
 {% if total_pages > 1 %}
 <nav class="d-flex justify-content-center">
   <ul class="pagination-dark">

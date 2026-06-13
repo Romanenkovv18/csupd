@@ -48,9 +48,11 @@
 
 <!-- Быстрые действия -->
 <div class="quick-actions mb-4">
+  {% if current_user and current_user.role != 'sborshik' %}
   <a href="{{ url_for('prikhod') }}" class="btn btn-action btn-prikhod">
     <i class="bi bi-box-arrow-in-down"></i> Приход
   </a>
+  {% endif %}
   <a href="{{ url_for('raskhod') }}" class="btn btn-action btn-raskhod">
     <i class="bi bi-box-arrow-up"></i> Расход
   </a>

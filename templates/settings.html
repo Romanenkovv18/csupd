@@ -325,8 +325,10 @@
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Тип двигателя <span class="req">*</span></label>
-            <input type="text" name="engine_type" class="form-control fc-dark"
-                   placeholder="ТВ3-117" required>
+            <select name="engine_type" class="form-select fc-dark" required>
+              <option value="ТВ3-117" selected>ТВ3-117</option>
+              <option value="ТВ2-117">ТВ2-117</option>
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Номер операции <span class="req">*</span></label>

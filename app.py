@@ -451,6 +451,11 @@ def journal():
     conditions = ['1=1']
     params     = []
 
+    # Сборщик видит только свои операции
+    if session.get('role') == 'sborshik':
+        conditions.append('m.operator = ?')
+        params.append(session.get('full_name') or session.get('username', ''))
+
     if q:
         conditions.append(
             '(p.name LIKE ? OR p.article LIKE ? OR m.operator LIKE ? OR m.engine_number LIKE ?)'
