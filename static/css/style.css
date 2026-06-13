@@ -77,7 +77,7 @@ body.light-theme .modal-dark .modal-body { color: #1a202c; }
 body.light-theme table              { color: #1a202c; }
 body.light-theme .det-table thead th { color: #718096; border-color: rgba(0,0,0,0.08); }
 body.light-theme .det-table tbody td { border-color: rgba(0,0,0,0.04); }
-body.light-theme .det-row:hover td  { background: rgba(0,0,0,0.025); }
+body.light-theme .det-row:hover td  { background: #2a4a7a !important; color: #fff !important; }
 body.light-theme .page-title        { color: #1a202c; }
 body.light-theme .page-sub          { color: #718096; }
 body.light-theme .flash-item        { border-color: rgba(0,0,0,0.1); }
@@ -342,6 +342,10 @@ body {
 .result-count { padding-left: 0.25rem; }
 
 /* ── Parts table ────────────────────────────────── */
+/* ── Глобальный hover для всех строк таблиц ─────────────────────────────── */
+.table tbody tr:hover td,
+.table tbody tr:hover th { background: #2a4a7a !important; color: #fff !important; }
+
 .table-container {
   background: var(--bg-table);
   border: 1px solid var(--border);
@@ -380,12 +384,12 @@ body {
 
 /* Row colours */
 .part-row--red    { background: rgba(220,53,69,0.06); }
-.part-row--red:hover { background: rgba(220,53,69,0.14); }
+.part-row--red:hover { background: #2a4a7a; color: #fff; }
 
 .part-row--yellow { background: rgba(240,180,41,0.05); }
-.part-row--yellow:hover { background: rgba(240,180,41,0.12); }
+.part-row--yellow:hover { background: #2a4a7a; color: #fff; }
 
-.part-row--green:hover { background: rgba(255,255,255,0.03); }
+.part-row--green:hover { background: #2a4a7a; color: #fff; }
 
 /* Dot cell */
 .dot-cell { width: 40px; text-align: center; }
@@ -919,8 +923,8 @@ select.fc-dark:focus,
 
 .jrow-in  { background: rgba(62,207,142,0.04); }
 .jrow-out { background: rgba(220,53,69,0.04);  }
-.jrow-in:hover  { background: #2a3a5c; color: #e0e8ff; }
-.jrow-out:hover { background: #2a3a5c; color: #e0e8ff; }
+.jrow-in:hover  { background: #2a4a7a; color: #fff; }
+.jrow-out:hover { background: #2a4a7a; color: #fff; }
 
 .dt-cell { line-height: 1.3; }
 .dt-date { display: block; font-size: 0.85rem; color: var(--text); }
@@ -1967,7 +1971,7 @@ select.fc-dark:focus,
   border-bottom: 1px solid rgba(255,255,255,0.04);
   vertical-align: middle;
 }
-.det-row:hover td { background: rgba(255,255,255,0.025); }
+.det-row:hover td { background: #2a4a7a; color: #fff; }
 
 .det-article {
   font-family: monospace;

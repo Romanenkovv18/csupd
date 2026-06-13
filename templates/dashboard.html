@@ -138,7 +138,8 @@
                         data-part-article="{{ p.article }}"
                         data-part-unit="{{ p.unit }}"
                         data-current-qty="{{ p.quantity }}"
-                        data-monthly-plan="{{ p.monthly_plan }}">
+                        data-monthly-plan="{{ p.monthly_plan }}"
+                        data-operator="{{ current_user.full_name or current_user.username }}">
                   <i class="bi bi-cart-plus"></i>
                 </button>
               </td>
@@ -226,8 +227,9 @@
 
           <div class="mb-1">
             <label class="form-label">Кто создаёт заявку</label>
-            <div class="form-control-readonly">
-              <i class="bi bi-person-fill me-1 text-muted"></i>{{ current_user.full_name }}
+            <div class="form-control-readonly" id="modal-operator-display">
+              <i class="bi bi-person-fill me-1 text-muted"></i>
+              <span id="modal-operator-name">{{ current_user.full_name or current_user.username }}</span>
             </div>
           </div>
         </div>
@@ -270,11 +272,13 @@
     const currentQty  = parseInt(btn.dataset.currentQty);
     const monthlyPlan = parseInt(btn.dataset.monthlyPlan);
 
-    document.getElementById('modal-part-id').value   = partId;
+    document.getElementById('modal-part-id').value       = partId;
     document.getElementById('modal-article').textContent = partArticle;
     document.getElementById('modal-name').textContent    = partName;
     document.getElementById('modal-qty').textContent     = currentQty + ' ' + partUnit;
     document.getElementById('modal-unit').textContent    = partUnit;
+    var opName = btn.dataset.operator;
+    if (opName) document.getElementById('modal-operator-name').textContent = opName;
 
     // Рекомендуемое количество = месячный план
     const suggested = monthlyPlan || 1;
