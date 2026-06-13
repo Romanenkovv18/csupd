@@ -72,5 +72,16 @@ def ensure_migrations():
             conn.execute("ALTER TABLE movements ADD COLUMN cancelled_at DATETIME")
             conn.commit()
 
+        # updated_by / updated_at в stock
+        if 'updated_by' not in {row[1] for row in conn.execute("PRAGMA table_info(stock)")}:
+            conn.execute("ALTER TABLE stock ADD COLUMN updated_by TEXT")
+            conn.commit()
+
+        # updated_by / updated_at в parts
+        if 'updated_by' not in {row[1] for row in conn.execute("PRAGMA table_info(parts)")}:
+            conn.execute("ALTER TABLE parts ADD COLUMN updated_by TEXT")
+            conn.execute("ALTER TABLE parts ADD COLUMN updated_at DATETIME")
+            conn.commit()
+
     finally:
         conn.close()

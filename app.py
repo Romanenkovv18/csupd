@@ -244,9 +244,9 @@ def raskhod():
                         form=request.form,
                     )
                 db.execute(
-                    'UPDATE stock SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP '
-                    'WHERE id = ?',
-                    (quantity, stock['id'])
+                    'UPDATE stock SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP, '
+                    'updated_by = ? WHERE id = ?',
+                    (quantity, session.get('username', ''), stock['id'])
                 )
                 mov_id = db.execute(
                     'INSERT INTO movements '
@@ -333,14 +333,14 @@ def prikhod():
             else:
                 if stock:
                     db.execute(
-                        'UPDATE stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP '
-                        'WHERE id = ?',
-                        (quantity, stock['id'])
+                        'UPDATE stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP, '
+                        'updated_by = ? WHERE id = ?',
+                        (quantity, session.get('username', ''), stock['id'])
                     )
                 else:
                     db.execute(
-                        'INSERT INTO stock (part_id, cell_id, quantity) VALUES (?, ?, ?)',
-                        (part_id, target_cell_id, quantity)
+                        'INSERT INTO stock (part_id, cell_id, quantity, updated_by) VALUES (?, ?, ?, ?)',
+                        (part_id, target_cell_id, quantity, session.get('username', ''))
                     )
                 db.execute(
                     'INSERT INTO movements '
@@ -1098,8 +1098,9 @@ def assembly_complete(asm_id):
 
     for p in parts:
         db.execute(
-            'UPDATE stock SET quantity=quantity-?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-            (p['needed'], p['stock_id'])
+            'UPDATE stock SET quantity=quantity-?, updated_at=CURRENT_TIMESTAMP, '
+            'updated_by=? WHERE id=?',
+            (p['needed'], session.get('username', ''), p['stock_id'])
         )
         db.execute(
             'INSERT INTO movements (part_id, cell_id, operation_type, quantity, '
@@ -1635,7 +1636,7 @@ def details():
     sql = '''
         SELECT p.id, p.article, p.name, p.engine_type, p.unit,
                p.monthly_plan, p.red_threshold, p.yellow_threshold,
-               s.quantity AS stock_qty,
+               s.quantity AS stock_qty, s.updated_by, s.updated_at,
                sc.cell_code
         FROM parts p
         LEFT JOIN stock s  ON s.part_id = p.id
@@ -1667,7 +1668,8 @@ def details():
             status = 'yellow'
         else:
             status = 'green'
-        parts.append({**dict(r), 'stock_qty': qty, 'status': status})
+        parts.append({**dict(r), 'stock_qty': qty, 'status': status,
+                      'updated_by': r['updated_by'], 'updated_at': r['updated_at']})
 
     db.close()
     return render_template('details.html',
@@ -1688,8 +1690,9 @@ def details_thresholds(part_id):
         return redirect(url_for('details'))
     db = get_db()
     db.execute(
-        'UPDATE parts SET red_threshold=?, yellow_threshold=? WHERE id=?',
-        (red, yel, part_id)
+        'UPDATE parts SET red_threshold=?, yellow_threshold=?, '
+        'updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+        (red, yel, session.get('username', ''), part_id)
     )
     db.commit()
     db.close()

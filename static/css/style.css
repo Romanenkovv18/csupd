@@ -1993,6 +1993,7 @@ select.fc-dark:focus,
   color: var(--text-muted);
 }
 .det-name { font-weight: 500; }
+.det-updated-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; opacity: 0.75; }
 .det-eng-badge {
   font-size: 0.72rem;
   background: rgba(99,179,237,0.1);
